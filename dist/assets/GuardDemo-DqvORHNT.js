@@ -1,0 +1,1 @@
+import{A as e}from"./hyperscript-LLgsElhq.js";import{s as t}from"./index-DcyLmPYS.js";var n=e(`GuardDemo`,{},()=>({}),()=>[t(`Guard demo`),`Should not be displayed`]);export{n as GuardDemo};

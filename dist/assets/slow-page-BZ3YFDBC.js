@@ -1,0 +1,5 @@
+import{A as e,g as t,i as n}from"./hyperscript-LLgsElhq.js";import{s as r}from"./index-DcyLmPYS.js";var i=e(`SlowPageComponent`,{styles:`
+      :scope { padding:2rem; border:1px solid #bbf7d0; border-radius:8px; background:#f0fdf4; color:#166534; }
+      dl { display:grid; grid-template-columns:auto 1fr; gap:.25rem 1rem; margin-top:1rem; }
+      dt { font-weight:600; }
+    `},()=>({}),()=>n([r(`✅ Slow page loaded`),t(`Both the slow guard and resolver finished. This component was mounted only after the whole chain settled.`),{kind:`element`,tag:`dl`,props:{},children:[{kind:`element`,tag:`dt`,props:{},children:`Report generated at`},{kind:`element`,tag:`dd`,props:{},children:`resolved`},{kind:`element`,tag:`dt`,props:{},children:`Total users`},{kind:`element`,tag:`dd`,props:{},children:`1234`}]}]));export{i as default};
