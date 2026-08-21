@@ -1,1 +1,0 @@
-import{A as e,g as t}from"./hyperscript-LLgsElhq.js";var n=e(`lazyMessage`,{},()=>({}),()=>t({class:`component-demo__lazy-content`,"data-testid":`deferred-content`},`The deferred component is loaded.`));export{n as lazyMessage};

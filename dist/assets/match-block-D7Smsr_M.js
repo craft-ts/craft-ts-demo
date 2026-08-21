@@ -1,1 +1,0 @@
-function e(e,t,n){return{kind:`match-block`,source:e,key:t,handlers:n}}var t={exhaustive:e};export{t};
