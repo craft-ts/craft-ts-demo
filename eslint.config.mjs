@@ -1,23 +1,18 @@
-import playwright from 'eslint-plugin-playwright';
-import baseConfig from '../../eslint.config.mjs';
-import craftRules from '../../libs/dev-tools/src/eslint-rules/index.cjs';
+import eslint from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
+
+import craftRules from '@craft-ts/dev-tools/eslint-rules';
 import { craftDemoRules } from './craft-eslint-rules.mjs';
 
-const craftSourceFiles = ['**/src/**/*.ts'];
-const testFiles = ['**/*.spec.ts', '**/*.test.ts', '**/e2e/**/*.ts'];
-const unitTestFiles = ['**/src/**/*.spec.ts', '**/src/**/*.test.ts'];
-
-export default [
-  playwright.configs['flat/recommended'],
-  ...baseConfig,
+export default defineConfig([
   {
-    ignores: ['**/architecture/catalog.ts'],
-  },
-  {
-    // Craft rules describe authored application code. Specs, architecture
-    // proofs, and Playwright tests are separate executable boundaries.
-    files: craftSourceFiles,
-    ignores: ['**/*.spec.ts', '**/*.test.ts'],
+    files: ['**/*.ts'],
+    extends: [
+      eslint.configs.recommended,
+      ...tseslint.configs.recommended,
+      ...tseslint.configs.stylistic,
+    ],
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.app.json', './tsconfig.spec.json'],
@@ -29,74 +24,104 @@ export default [
     },
     rules: {
       ...craftDemoRules,
+      // Keep the standalone release config aligned with the workspace demo
+      // config. Craft generator functions may intentionally return without
+      // yielding when they only delegate to another generator.
+      'require-yield': 'off',
+      // The workspace demo permits type aliases for unions and mapped types.
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@typescript-eslint/consistent-generic-constructors': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
     },
   },
   {
-    // These boundaries intentionally expose synchronous JavaScript-style
-    // error contracts instead of the application's no-throw contract.
+    files: ['**/src/app/function-registry.ts'],
+    rules: {
+      'craft-ts/no-throw': 'off',
+    },
+  },
+  {
+    files: ['**/src/app/function-registry.spec.ts'],
+    rules: {
+      'craft-ts/no-craft-computed-side-effects': 'off',
+    },
+  },
+  {
     files: [
-      '**/src/app/app.config.ts',
-      '**/src/app/function-registry.ts',
-      '**/src/app/function-registry-entry.ts',
       '**/src/app/function-registry-bridge.ts',
-      '**/src/app/page-actor.ts',
       '**/src/app/query-params.utils.ts',
-      '**/src/app/template-trace-demo.ts',
     ],
     rules: {
       'craft-ts/no-throw': 'off',
-      // These entry points are synchronous adapters around Craft generators.
-      'craft-ts/no-craft-use': 'off',
     },
   },
   {
-    files: [
-      '**/src/app/function-registry-bridge.ts',
-      '**/src/app/page-actor.ts',
-      '**/src/app/query-params.utils.ts',
-    ],
+    files: ['**/src/app/template-trace-demo.ts'],
     rules: {
-      // These adapters validate external protocol/URL values and may use
-      // async/await at their infrastructure boundary.
-      'craft-ts/no-async-await': 'off',
     },
   },
   {
-    // These adapters own infrastructure lifetimes rather than Craft state;
-    // their native timer handles are not part of a Craft primitive.
     files: [
       '**/src/app/function-registry-bridge.ts',
       '**/src/app/log-forwarder.ts',
-      '**/src/app/function-registry-entry.ts',
     ],
     rules: {
       'craft-ts/no-direct-temporal-globals': 'off',
-      'craft-ts/no-craft-use': 'off',
     },
   },
   {
-    // Vite/Vitest config files are Node tooling boundaries and intentionally
-    // import the shared workspace plugin through a relative path.
-    files: ['vite.config.ts', 'vitest.config.ts'],
-    rules: {
-      '@nx/enforce-module-boundaries': 'off',
-    },
+    files: ['**/*.html'],
+    extends: [
+    ],
   },
   {
-    // Tests may use DOM globals and non-null assertions to express setup and
-    // assertions directly; these rules remain enabled for production Craft.
-    files: testFiles,
+    files: ['**/*.spec.ts', '**/*.test.ts'],
     rules: {
+      'craft-ts/prefer-craft-template-blocks': 'off',
+      'craft-ts/no-async-await': 'off',
+      'craft-ts/no-throw': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
   {
-    // Vitest specs use expect in shared setup helpers; this is not Playwright
-    // test code and should not be checked by Playwright's test-boundary rule.
-    files: unitTestFiles,
+    files: ['**/e2e/**/*.ts', '**/playwright.config.ts'],
     rules: {
-      'playwright/no-standalone-expect': 'off',
+      'craft-ts/craft-method-name-match': 'off',
+      'craft-ts/craft-computed-name-match': 'off',
+      'craft-ts/craft-source-name-match': 'off',
+      'craft-ts/craft-signal-source-name-match': 'off',
+      'craft-ts/craft-component-name-match': 'off',
+      'craft-ts/craft-directive-name-match': 'off',
+      'craft-ts/no-direct-temporal-globals': 'off',
+      'craft-ts/prefer-craft-template-blocks': 'off',
+      'craft-ts/no-render-writes': 'off',
+      'craft-ts/require-reactive-template-bindings': 'off',
+      'craft-ts/prefer-craft-http-transport': 'off',
+      'craft-ts/no-imperative-craft-resource-trigger': 'off',
+      'craft-ts/require-craft-resource-trigger-yield': 'off',
+      'craft-ts/require-yieldable-template-method': 'off',
+      'craft-ts/require-craft-method-for-yieldable-callback': 'off',
+      'craft-ts/require-yieldable-reactive-read': 'off',
+      'craft-ts/no-ephemeral-template-form-state': 'off',
+      'craft-ts/template-element-name-unique': 'off',
+      'craft-ts/require-primitive-context': 'off',
+      'craft-ts/require-primitive-derived-property': 'off',
+      'craft-ts/no-async-await': 'off',
+      'craft-ts/no-throw': 'off',
     },
   },
-];
+  {
+    files: ['**/*.spec.ts', '**/*.test.ts', '**/e2e/**/*.ts'],
+    rules: {
+      'craft-ts/prefer-browser-boundaries': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+    },
+  },
+]);
