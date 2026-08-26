@@ -14,9 +14,9 @@
     "lint:check": "eslint ."
   },
   "dependencies": {
-    "@craft-ts/component": "0.7.0-beta.15",
-    "@craft-ts/core": "0.7.0-beta.15",
-    "@craft-ts/dev-tools": "0.7.0-beta.15",
+    "@craft-ts/component": "0.7.0-beta.16",
+    "@craft-ts/core": "0.7.0-beta.16",
+    "@craft-ts/dev-tools": "0.7.0-beta.16",
     "rxjs": "~7.8.0"
   },
   "devDependencies": {
