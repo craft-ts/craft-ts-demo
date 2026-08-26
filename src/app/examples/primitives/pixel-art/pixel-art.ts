@@ -4,8 +4,8 @@ import {
   button,
   craftComponent,
   div,
-  each,
-  scheduleEach,
+  forNode,
+  scheduleFor,
   header,
   p,
   section,
@@ -114,7 +114,7 @@ const PixelArt = craftComponent(
       if (!cell) return;
       yield* cell.paint();
     });
-    const pixelGrid = each(
+    const pixelGrid = forNode(
       INDEXES,
       { track: (index) => index },
       (_item, currentIndex) =>
@@ -128,14 +128,14 @@ const PixelArt = craftComponent(
           },
           title: `Cell ${currentIndex + 1}`,
           *click() {
-            yield* paintCell(currentIndex);
+            paintCell(currentIndex);
           },
         }),
     );
     const renderedPixelGrid =
       SCHEDULE_MODE === 'frame'
         ? pixelGrid.pipe(
-            scheduleEach({
+            scheduleFor({
               enabled: true,
               strategy: 'frame',
               frameBudgetMs: 4,
@@ -154,7 +154,7 @@ const PixelArt = craftComponent(
       ]),
       div(
         { class: 'pixel-palette' },
-        each(COLORS, { track: (color) => color }, (color) =>
+        forNode(COLORS, { track: (color) => color }, (color) =>
           button('color', {
             type: 'button',
             class: 'pixel-color',
@@ -174,9 +174,7 @@ const PixelArt = craftComponent(
         'clear',
         {
           type: 'button',
-          *click() {
-            yield* cells.clearAll();
-          },
+          click: cells.clearAll,
         },
         'Clear',
       ),

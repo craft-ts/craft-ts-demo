@@ -3,8 +3,8 @@ import {
   button,
   craftComponent,
   div,
-  each,
-  ifBlock,
+  forNode,
+  ifNode,
   input,
   p,
   span,
@@ -299,11 +299,9 @@ const PlaygroundComponent = craftComponent(
         button('add',
           { type: 'button',
             disabled: pg.addTodo.isLoading,
-            *click() {
-              yield* add();
-            },
+            click: add,
           },
-          ifBlock(
+          ifNode(
             isAdding,
             () => 'Adding…',
             () => 'Add',
@@ -312,7 +310,7 @@ const PlaygroundComponent = craftComponent(
       ]),
       div(
         { class: 'list' },
-        each(
+        forNode(
           todos,
           { track: (todo) => todo.id, empty: () => p('No todos yet.') },
           (todo) =>

@@ -5,7 +5,7 @@ import {
   craftComponent,
   div,
   heading,
-  ifBlock,
+  ifNode,
   p,
   pre,
   type Input,
@@ -81,7 +81,7 @@ const GlobalQuery = craftComponent(
       div({ class: 'query-result' }, [
         'User ',
         StatusComponent({ status: userQuery.status }),
-        ifBlock(userQuery.hasUser, () =>
+        ifNode(userQuery.hasUser, () =>
           pre('QueryValue', {}, function* () {
             return JSON.stringify(yield* userQuery.value(), null, 2);
           }),
@@ -95,18 +95,14 @@ const GlobalQuery = craftComponent(
         button(
           'GoToPreviousUser',
           { type: 'button',
-            *click() {
-              yield* navigatePrevious();
-            },
+            click: navigatePrevious,
           },
           'Previous user',
         ),
         button(
           'GoToNextUser',
           { type: 'button',
-            *click() {
-              yield* navigateNext();
-            },
+            click: navigateNext,
           },
           'Next user',
         ),

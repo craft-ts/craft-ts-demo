@@ -61,6 +61,36 @@ export const { demoRoutes } = craftRoutes('demo', [
       ).then((module) => module.viewTransitionsRoutes),
   },
 
+  /* demo-route-end */ /* demo-route: i18n */
+  {
+    path: 'i18n',
+    ...loadCraftComponent(({ withRetry }) =>
+      withRetry(import('./examples/i18n/type-safe-i18n-demo')).then(
+        ({ TypeSafeI18nDemo }) => TypeSafeI18nDemo,
+      ),
+    ),
+  },
+
+  /* demo-route-end */ /* demo-route: design-system */
+  {
+    path: 'design-system',
+    ...loadCraftComponent(({ withRetry }) =>
+      withRetry(import('./examples/design-system/design-system-demo')).then(
+        ({ designSystemDemo }) => designSystemDemo,
+      ),
+    ),
+  },
+
+  /* demo-route-end */ /* demo-route: design-system-scroll */
+  {
+    path: 'design-system/scroll',
+    ...loadCraftComponent(({ withRetry }) =>
+      withRetry(import('./examples/design-system/scroll')).then(
+        ({ ScrollDemo }) => ScrollDemo,
+      ),
+    ),
+  },
+
   /* demo-route-end */ /* demo-route: home */
   {
     path: '',
@@ -91,25 +121,32 @@ export const { demoRoutes } = craftRoutes('demo', [
     ),
   },
 
-  /* demo-route-end */ /* demo-route: pending-block */
+  /* demo-route-end */ /* demo-route: pending-node */
   {
-    path: 'pending-block',
+    path: 'pending-node',
     ...loadCraftComponent(({ withRetry }) =>
-      withRetry(import('./examples/component/pending-block-demo')).then(
+      withRetry(import('./examples/component/pending-node-demo')).then(
         ({ default: component }) => component,
       ),
     ),
   },
 
-  /* demo-route-end */ /* demo-route: pending-block-exception */
-  {
-    path: 'pending-block/exception',
-    ...loadCraftComponent(({ withRetry }) =>
-      withRetry(
-        import('./examples/component/pending-block-exception-demo'),
-      ).then(({ default: component }) => component),
-    ),
-  },
+  /* demo-route-end */ /* demo-route: pending-node-exception */
+  craftRoute(
+    'pending-node/exception',
+    {
+      ...loadCraftComponent(({ withRetry }) =>
+        withRetry(
+          import('./examples/component/pending-node-exception-demo'),
+        ).then(({ default: component }) => component),
+      ),
+    },
+    {
+      INVOICE_REJECTED: craftExceptionHandler(function* ({ globalError }) {
+        return globalError();
+      }),
+    },
+  ),
 
   /* demo-route-end */ /* demo-route: css-vars */
   {
@@ -339,9 +376,9 @@ export const { demoRoutes } = craftRoutes('demo', [
   {
     path: 'state-machine-text',
     ...loadCraftComponent(({ withRetry }) =>
-      withRetry(
-        import('./examples/primitives/state-machine/text-editor'),
-      ).then(({ default: component }) => component),
+      withRetry(import('./examples/primitives/state-machine/text-editor')).then(
+        ({ default: component }) => component,
+      ),
     ),
   },
 
@@ -478,6 +515,9 @@ export const demoEnabledRoutePaths: ReadonlySet<string> = new Set(
 // the selected runtime collection.
 type DemoRoutePath =
   | ''
+  | 'design-system'
+  | 'design-system/scroll'
+  | 'i18n'
   | 'query/:userId'
   | 'debounced-web-search'
   | 'slow-page'
@@ -485,8 +525,8 @@ type DemoRoutePath =
   | 'view-transitions/:photoId'
   | 'component-composition'
   | 'content-projection'
-  | 'pending-block'
-  | 'pending-block/exception'
+  | 'pending-node'
+  | 'pending-node/exception'
   | 'css-vars'
   | 'css-vars/required'
   | 'css-vars/inheritance'
@@ -562,6 +602,13 @@ declare module '@craft-ts/core' {
         'UNEXPECTED_ERROR'
       >;
     };
+    'pending-node/exception': {
+      INVOICE_REJECTED: CraftRouteExceptionType<
+        typeof demoRoutes,
+        'pending-node/exception',
+        'INVOICE_REJECTED'
+      >;
+    };
   }
 }
 /* demo-check-end */
@@ -595,6 +642,33 @@ type _CanRunDebouncedWebSearch = CanRun<
   >
 >;
 /* demo-check-end */
+/* demo-check: i18n */
+type _CanRunTypeSafeI18nDemo = CanRun<
+  DemoRouteCheckedDI<
+    (typeof import('./examples/i18n/type-safe-i18n-demo'))['TypeSafeI18nDemo'],
+    never,
+    'path: "i18n"'
+  >
+>;
+/* demo-check-end */
+/* demo-check: design-system */
+type _CanRunDesignSystem = CanRun<
+  DemoRouteCheckedDI<
+    (typeof import('./examples/design-system/design-system-demo'))['designSystemDemo'],
+    never,
+    'path: "design-system"'
+  >
+>;
+/* demo-check-end */
+/* demo-check: design-system-scroll */
+type _CanRunDesignSystemScroll = CanRun<
+  DemoRouteCheckedDI<
+    (typeof import('./examples/design-system/scroll'))['ScrollDemo'],
+    never,
+    'path: "design-system/scroll"'
+  >
+>;
+/* demo-check-end */
 /* demo-check: home */
 type _CanRunComponentDemo = CanRun<
   DemoRouteCheckedDI<
@@ -622,21 +696,21 @@ type _CanRunComponentComposition = CanRun<
   >
 >;
 /* demo-check-end */
-/* demo-check: pending-block */
+/* demo-check: pending-node */
 type _CanRunPendingBlock = CanRun<
   DemoRouteCheckedDI<
-    (typeof import('./examples/component/pending-block-demo'))['default'],
+    (typeof import('./examples/component/pending-node-demo'))['default'],
     never,
-    'path: "pending-block"'
+    'path: "pending-node"'
   >
 >;
 /* demo-check-end */
-/* demo-check: pending-block-exception */
+/* demo-check: pending-node-exception */
 type _CanRunPendingBlockException = CanRun<
   DemoRouteCheckedDI<
-    (typeof import('./examples/component/pending-block-exception-demo'))['default'],
+    (typeof import('./examples/component/pending-node-exception-demo'))['default'],
     never,
-    'path: "pending-block/exception"'
+    'path: "pending-node/exception"'
   >
 >;
 /* demo-check-end */

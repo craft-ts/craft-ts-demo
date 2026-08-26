@@ -7,7 +7,8 @@ import {
   craftComponent,
   div,
   img,
-  ifBlock,
+  ifNode,
+  safeResourceUrl,
   span,
   type Input,
 } from '@craft-ts/component';
@@ -64,12 +65,14 @@ const ViewTransitionsSkeletonComponent = craftComponent(
           },
         },
         [
-          ifBlock(
+          ifNode(
             hasImage,
             () =>
               img({
                 class: 'vt-hero-image',
-                src: imageSrc,
+                src: function* () {
+                  return safeResourceUrl(yield* imageSrc());
+                },
                 alt: '',
               }),
             () =>

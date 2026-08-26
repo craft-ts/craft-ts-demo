@@ -5,10 +5,11 @@ import {
   craftComponent,
   CraftRouterOutlet,
   div,
-  each,
-  ifBlock,
+  forNode,
+  ifNode,
   main,
   nav,
+  safeUrl,
   skipLink,
   span,
   strong,
@@ -26,22 +27,30 @@ import {
 import { demoEnabledRoutePaths } from './app.routes';
 
 const DOCS_URL = 'https://craft-ts.github.io/craft/';
-const FEEDBACK_URL = 'https://github.com/craft-ts/craft-ts/discussions';
+const FEEDBACK_URL = 'https://github.com/craft-ts/craft-ts/issues';
 
 const NAV_GROUPS = [
   {
     label: 'Components',
     links: [
       ['Functional Components', { to: '' }],
+      ['Type-safe i18n', { to: 'i18n' }],
       ['Reactive Composition', { to: 'component-composition' }],
       ['Content Projection', { to: 'content-projection' }],
-      ['Pending Block', { to: 'pending-block' }],
-      ['Pending Block — Exception', { to: 'pending-block/exception' }],
+      ['Pending Block', { to: 'pending-node' }],
+      ['Pending Block — Exception', { to: 'pending-node/exception' }],
       ['CSS Variables — Overview', { to: 'css-vars' }],
       ['CSS Variables — Required', { to: 'css-vars/required' }],
       ['CSS Variables — Inheritance', { to: 'css-vars/inheritance' }],
       ['CSS Variables — Forwarding', { to: 'css-vars/forwarding' }],
       ['CSS Variables — @property', { to: 'css-vars/property' }],
+    ],
+  },
+  {
+    label: 'Design system',
+    links: [
+      ['Mini design system', { to: 'design-system' }],
+      ['Context obligations', { to: 'design-system/scroll' }],
     ],
   },
   {
@@ -176,101 +185,102 @@ export const App = craftComponent(
   },
   ({ clearCache, navOpen, toggleNav, closeNav }) =>
     div([
-        skipLink('main', 'Skip to content'),
-        div({ class: 'demo-banner' }, [
-          div({ class: 'demo-banner__main' }, [
-            strong('Beta demo'),
-            span(' — the API and documentation may still evolve.'),
-            a('docs',
-              {
-                href: DOCS_URL,
-                target: '_blank',
-                rel: 'noreferrer',
-              },
-              'Read the documentation',
-            ),
-            span(' · '),
-            a('feedback',
-              {
-                href: FEEDBACK_URL,
-                target: '_blank',
-                rel: 'noreferrer',
-              },
-              'Your feedback is welcome',
-            ),
-          ]),
-          div({ class: 'demo-banner__hint' }, [
-            'Tip: read ',
-            strong('`yield*`'),
-            ' as “I need…”: each primitive or service becomes an explicit dependency.',
-          ]),
-        ]),
-        nav({ class: 'demo-nav' }, [
-          button(
-            'navToggle',
+      skipLink('main', 'Skip to content'),
+      div('demo-banner', { class: 'demo-banner' }, [
+        div({ class: 'demo-banner__main' }, [
+          strong('Beta demo'),
+          span(' — the API and documentation may still evolve.'),
+          a(
+            'docs',
             {
-              class: 'demo-nav__toggle',
-              type: 'button',
-              click: toggleNav,
-              'aria-expanded': navOpen,
+              href: safeUrl(DOCS_URL),
+              target: '_blank',
+              rel: 'noreferrer',
             },
-            navOpen.navToggleLabel,
+            'Read the documentation',
           ),
-          ifBlock(
-            navOpen,
-            () =>
-              div(
-                'navPanel',
-                {
-                  class: 'demo-nav__panel',
-                },
-                each(
-                  VISIBLE_NAV_GROUPS,
-                  { track: (group) => group.label },
-                  (group) =>
-                    div({ class: 'demo-nav__group' }, [
-                      strong(function* () {
-                        return (yield* group()).label;
-                      }),
-                      div(
-                        { class: 'demo-nav__links' },
-                        each(
-                          function* () {
-                            return (yield* group()).links;
-                          },
-                          { track: ([, link]) => link.to },
-                          (entry) =>
-                            a(
-                              'navLink',
-                              {
-                                click: closeNav,
-                                craftRouterLink: function* () {
-                                  return (yield* entry())[1];
-                                },
-                              },
-                              function* () {
-                                return (yield* entry())[0];
-                              },
-                            ).pipe(CraftRouterLink),
-                        ),
-                      ),
-                    ]),
-                ),
-              ),
-            () => [],
+          span(' · '),
+          a(
+            'feedback',
+            {
+              href: safeUrl(FEEDBACK_URL),
+              target: '_blank',
+              rel: 'noreferrer',
+            },
+            'Your feedback is welcome',
           ),
         ]),
-        main({ id: 'main', class: 'content', tabIndex: -1 }, CraftRouterOutlet()),
-        button('clearCache',
+        div({ class: 'demo-banner__hint' }, [
+          'Tip: read ',
+          strong('`yield*`'),
+          ' as “I need…”: each primitive or service becomes an explicit dependency.',
+        ]),
+      ]),
+      nav({ class: 'demo-nav' }, [
+        button(
+          'navToggle',
           {
-            class: 'clear-cache-btn',
+            class: 'demo-nav__toggle',
             type: 'button',
-            *click() {
-              yield* clearCache();
-            },
+            click: toggleNav,
+            'aria-expanded': navOpen,
           },
-          '🗑️ Clear Cache',
+          navOpen.navToggleLabel,
         ),
-      ],
-    ),
+        ifNode(
+          navOpen,
+          () =>
+            div(
+              'navPanel',
+              {
+                class: 'demo-nav__panel',
+              },
+              forNode(
+                VISIBLE_NAV_GROUPS,
+                { track: (group) => group.label },
+                (group) =>
+                  div({ class: 'demo-nav__group' }, [
+                    strong(function* () {
+                      return (yield* group()).label;
+                    }),
+                    div(
+                      { class: 'demo-nav__links' },
+                      forNode(
+                        function* () {
+                          return (yield* group()).links;
+                        },
+                        { track: ([, link]) => link.to },
+                        (entry) =>
+                          a(
+                            'navLink',
+                            {
+                              click: closeNav,
+                            },
+                            function* () {
+                              return (yield* entry())[0];
+                            },
+                          ).pipe(
+                            CraftRouterLink(function* () {
+                              return (yield* entry())[1];
+                            }),
+                          ),
+                      ),
+                    ),
+                  ]),
+              ),
+            ),
+          () => [],
+        ),
+      ]),
+      main({ id: 'main', class: 'content', tabIndex: -1 }, CraftRouterOutlet()),
+      button(
+        'clearCache',
+        {
+          class: 'clear-cache-btn',
+          type: 'button',
+          click: clearCache,
+        },
+        '🗑️ Clear Cache',
+      ),
+    ]),
 );

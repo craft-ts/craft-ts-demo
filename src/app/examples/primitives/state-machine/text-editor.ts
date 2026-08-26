@@ -5,13 +5,14 @@ import {
   div,
   heading,
   input,
-  matchBlock,
+  matchNode,
   p,
   section,
   span,
 } from '@craft-ts/component';
 import {
   craftComputed,
+  craftMethod,
   craftStateMachine,
   initStateMachine,
   on$,
@@ -103,6 +104,15 @@ const TextEditorStateMachine = craftComponent(
               ? 'step step--active'
               : 'step';
           }),
+          edit: craftMethod('edit', function* () {
+            context.edit$.emit();
+          }),
+          commit: craftMethod('commit', function* () {
+            context.commit$.emit();
+          }),
+          cancel: craftMethod('cancel', function* () {
+            context.cancel$.emit();
+          }),
           ..._context,
         };
       },
@@ -123,7 +133,7 @@ const TextEditorStateMachine = craftComponent(
         span({ class: machine.editingClass }, 'editing'),
       ]),
 
-      matchBlock.exhaustive(machine.currentStep, {
+      matchNode.exhaustive(machine.currentStep, {
         reading: () =>
           div({ class: 'panel' }, [
             p(['Committed value: ', machine.committedValue]),
@@ -132,9 +142,7 @@ const TextEditorStateMachine = craftComponent(
               'text-edit',
               {
                 type: 'button',
-                click: function* () {
-                  machine.edit$.emit();
-                },
+                click: machine.edit,
               },
               'Edit',
             ),
@@ -154,9 +162,7 @@ const TextEditorStateMachine = craftComponent(
                 'text-commit',
                 {
                   type: 'button',
-                  click: function* () {
-                    machine.commit$.emit();
-                  },
+                  click: machine.commit,
                 },
                 'Commit',
               ),
@@ -165,9 +171,7 @@ const TextEditorStateMachine = craftComponent(
                 {
                   type: 'button',
                   class: 'secondary',
-                  click: function* () {
-                    machine.cancel$.emit();
-                  },
+                  click: machine.cancel,
                 },
                 'Cancel',
               ),

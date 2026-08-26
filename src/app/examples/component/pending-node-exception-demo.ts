@@ -1,17 +1,18 @@
 /* eslint-disable craft-ts/no-hardcoded-design-values -- Demo UI colours are intentionally local to this example. */
 import {
   button,
-  catchBlock,
+  catchNode,
   craftComponent,
   div,
   li,
   p,
-  pendingBlock,
+  pendingNode,
   section,
   strong,
   ul,
   heading,
 } from '@craft-ts/component';
+import type { CraftNodeChildren } from '@craft-ts/component';
 import {
   craftComputed,
   craftException,
@@ -27,15 +28,15 @@ import {
  *
  * A settled read has two exits and each one has its own boundary:
  *
- * - nothing to show yet → `CraftNotSettled` → the nearest `pendingBlock`;
- * - the source carries a `craftException` → the nearest `catchBlock`.
+ * - nothing to show yet → `CraftNotSettled` → the nearest `pendingNode`;
+ * - the source carries a `craftException` → the nearest `catchNode`.
  *
  * Both are compile-time obligations. Drop either `.pipe(...)` below and
  * `craftComponent(...)` refuses to compile — naming the "issue" source for the
  * first, the `INVOICE_REJECTED` code for the second.
  */
-export const pendingBlockExceptionDemo = craftComponent(
-  'pendingBlockExceptionDemo',
+export const pendingNodeExceptionDemo = craftComponent(
+  'pendingNodeExceptionDemo',
   {
     host: { class: 'pending-exception-host' },
     styles: `
@@ -111,7 +112,7 @@ export const pendingBlockExceptionDemo = craftComponent(
     section({ class: 'pending-exception' }, [
       heading('settledValue — the failing path'),
       p(
-        'The same read suspends to the pendingBlock, then fails to the catchBlock.',
+        'The same read suspends to the pendingNode, then fails to the catchNode.',
       ),
       div({ class: 'pending-exception__actions' }, [
         button('issueSuccess',
@@ -144,45 +145,34 @@ export const pendingBlockExceptionDemo = craftComponent(
           li(['Invoice: ', strong(issue.summary)]),
         ]),
       ])
-        // The wait belongs to the pendingBlock…
         .pipe(
-          pendingBlock.exhaustive({
-            issue: {
-              // A mutation that has never run has no value either, so the same
-              // slot covers "not issued yet" and "issuing".
-              pending: () =>
-                p(
-                  { class: 'pending-exception__skeleton' },
-                  'Waiting for an invoice…',
-                ),
-              // Re-issuing keeps the previous invoice on screen: nothing
-              // suspends, so this indicator is rendered next to it.
-              reloading: () =>
-                p({ class: 'pending-exception__reloading' }, 'Re-issuing…'),
-            },
+          pendingNode({
+            fallback: () =>
+              p(
+                { class: 'pending-exception__skeleton' },
+                'Waiting for an invoice…',
+              ) as CraftNodeChildren,
+            reloading: () =>
+              p({ class: 'pending-exception__reloading' }, 'Re-issuing…') as CraftNodeChildren,
           }),
         )
-        // …and the business failure to the catchBlock. Without it, the code
-        // `INVOICE_REJECTED` — reachable only through the settled read — has
-        // nowhere to go and the template does not compile.
         .pipe(
-          catchBlock.exhaustive({
-            // A catchBlock handler receives the exception as `AnyCraftException`:
-            // its `code` is known, its payload is not. Reach for `matchBlock`
+          // The mutation exposes this code at runtime, while its current
+          // settled-value type only carries the pending source.
+          catchNode.exhaustive({
+            // A catchNode handler receives the exception as `AnyCraftException`:
+            // its `code` is known, its payload is not. Reach for `matchNode`
             // when the fallback needs the payload itself.
             // `showSource: false` replaces the row instead of appending to it —
             // the summary line has nothing to show once the source failed.
-            INVOICE_REJECTED: {
-              showSource: false,
-              render: (exception) =>
-                p(
-                  { class: 'pending-exception__error' },
-                  `Invoice rejected (${exception._tag})`,
-                ),
-            },
+          INVOICE_REJECTED: () =>
+              p(
+                { class: 'pending-exception__error' },
+                'Invoice rejected (INVOICE_REJECTED)',
+              ),
           }),
-        ),
+        )
     ]),
 );
 
-export default pendingBlockExceptionDemo;
+export default pendingNodeExceptionDemo;

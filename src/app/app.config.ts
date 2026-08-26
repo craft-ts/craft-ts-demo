@@ -41,6 +41,21 @@ import { MyRouteLoadErrorScreen } from './my-route-load-error-screen';
 import { AppStartLog } from './run-on-app-start/run-on-app-start';
 import { provideDemoTracing } from './template-trace-demo';
 
+const developmentProviders = import.meta.env.DEV
+  ? [
+      // The log server, tracing, snapshots and MCP bridge are deliberately
+      // absent from the production graph.
+      // Disabled in the target demo: do not send logs to the local log server.
+      // provideLogServerUrl(() => 'http://127.0.0.1:4319/logs'),
+      // Disabled in the target demo: do not send logs to the local log server.
+      // provideLogForwarding(),
+      provideDemoTracing(),
+      // eslint-disable-next-line craft-ts/prefer-browser-boundaries
+      provideTakeAppSnapshot((data) => console.warn('App snapshot:', data)),
+      provideMcpExperimentation(),
+    ]
+  : [];
+
 export const appConfig = craftAppConfig({
   appStart: {
     AppStartLog,
@@ -49,14 +64,7 @@ export const appConfig = craftAppConfig({
   // the slim path registry and avoids re-expanding every component graph.
   routingDeps: demoRoutes.META_PATHS,
   providers: [
-    // Overrides the craft ConsoleService: every Console.* call keeps printing
-    // in the browser and is also shipped to the local log server, where the
-    // logs MCP server can read it back.
-    // Disabled in the target demo: do not send logs to the local log server.
-    // provideLogServerUrl(() => 'http://127.0.0.1:4319/logs'),
-    // Disabled in the target demo: do not send logs to the local log server.
-    // provideLogForwarding(),
-    provideDemoTracing(),
+    ...developmentProviders,
     provideGlobalPersisterHandlerService(),
     provideLocalStoragePersister(),
     provideSessionStoragePersister(),
@@ -100,7 +108,7 @@ export const appConfig = craftAppConfig({
           return yield* factory.apply(thisArg, args);
         } catch (error) {
           // Control flow, not failure: a short-circuit is on its way to a
-          // `catchBlock`, a `CraftNotSettled` to a `pendingBlock`. Converting
+          // `catchNode`, a `CraftNotSettled` to a `pendingNode`. Converting
           // them to an `UNEXPECTED_ERROR` strands them — the boundary never
           // sees them and the fabricated exception renders in their place.
           if (isCraftGenShortCircuit(error) || isCraftNotSettled(error)) {
@@ -113,10 +121,6 @@ export const appConfig = craftAppConfig({
     ),
     provideCorrelationIdTracking(),
     //provideSendContextToAi(),
-    // App snapshot
-    // eslint-disable-next-line craft-ts/prefer-browser-boundaries
-    provideTakeAppSnapshot((data) => console.warn('App snapshot:', data)),
-    provideMcpExperimentation(),
   ],
 });
 

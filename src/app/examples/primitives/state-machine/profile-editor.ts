@@ -5,7 +5,7 @@ import {
   craftComponent,
   div,
   heading,
-  ifBlock,
+  ifNode,
   input,
   label,
   p,
@@ -316,10 +316,10 @@ const ProfileEditorStateMachine = craftComponent(
 
       p({ class: 'hint' }, machine.stepHint),
 
-      ifBlock(
+      ifNode(
         machine.isReading,
         () =>
-          ifBlock(
+          ifNode(
             machine.profileIsLoading,
             () =>
               div({ class: 'panel loading-panel' }, [
@@ -334,9 +334,7 @@ const ProfileEditorStateMachine = craftComponent(
                     'edit',
                     {
                       type: 'button',
-                      click: function* () {
-                        yield* machine.requestEdit();
-                      },
+                      click: machine.requestEdit,
                     },
                     'Edit',
                   ),
@@ -344,7 +342,7 @@ const ProfileEditorStateMachine = craftComponent(
               ]),
           ),
         () =>
-          ifBlock(
+          ifNode(
             machine.isEditing,
             () =>
               div({ class: 'panel' }, [
@@ -378,7 +376,7 @@ const ProfileEditorStateMachine = craftComponent(
                     },
                   }),
                 ]),
-                ifBlock(machine.submitBlocked, () =>
+                ifNode(machine.submitBlocked, () =>
                   p(
                     { class: 'blocked' },
                     'Save is blocked: the draft is invalid, or the profile is read-only.',
@@ -389,9 +387,7 @@ const ProfileEditorStateMachine = craftComponent(
                     'save',
                     {
                       type: 'button',
-                      click: function* () {
-                        yield* machine.requestSubmit();
-                      },
+                      click: machine.requestSubmit,
                     },
                     'Save',
                   ),
@@ -400,9 +396,7 @@ const ProfileEditorStateMachine = craftComponent(
                     {
                       type: 'button',
                       class: 'secondary',
-                      click: function* () {
-                        yield* machine.requestCancel();
-                      },
+                      click: machine.requestCancel,
                     },
                     'Cancel',
                   ),
@@ -419,9 +413,7 @@ const ProfileEditorStateMachine = craftComponent(
             type: 'button',
             class: 'secondary',
             disabled: machine.backDisabled,
-            click: function* () {
-              yield* machine.back();
-            },
+            click: machine.back,
           },
           '← Back',
         ),
@@ -431,9 +423,7 @@ const ProfileEditorStateMachine = craftComponent(
             type: 'button',
             class: 'secondary',
             disabled: machine.forwardDisabled,
-            click: function* () {
-              yield* machine.forward();
-            },
+            click: machine.forward,
           },
           'Forward →',
         ),
@@ -446,13 +436,11 @@ const ProfileEditorStateMachine = craftComponent(
           {
             type: 'button',
             class: 'secondary',
-            click: function* () {
-              yield* permissions.readOnly.toggle();
-            },
+            click: permissions.readOnly.toggle,
           },
           'Toggle read-only',
         ),
-        ifBlock(
+        ifNode(
           permissions.readOnly,
           () => span('read-only: on — saving is blocked'),
           () => span('read-only: off'),

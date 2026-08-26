@@ -5,11 +5,13 @@ import {
   catchTag,
   craftComponent,
   div,
-  each,
-  ifBlock,
+  forNode,
+  ifNode,
   img,
   input,
   p,
+  safeResourceUrl,
+  safeUrl,
   section,
   small,
   span,
@@ -270,19 +272,19 @@ const DebouncedWebSearch = craftComponent(
           StatusComponent({ status: searchQuery.status }),
         ]),
       ]),
-      ifBlock(searchInput.tooShort, () =>
+      ifNode(searchInput.tooShort, () =>
         p({ class: 'hint' }, 'Enter at least two characters to search.'),
       ),
-      ifBlock(showDebouncing, () =>
+      ifNode(showDebouncing, () =>
         p({ class: 'hint' }, 'Waiting for the debounce window…'),
       ),
-      ifBlock(searchQuery.hasSearchError, () =>
+      ifNode(searchQuery.hasSearchError, () =>
         p(
           { class: 'error' },
           'The search failed. Transient HTTP errors are retried up to three times.',
         ),
       ),
-      ifBlock(searchQuery.showResults, () => [
+      ifNode(searchQuery.showResults, () => [
         heading([
           searchQuery.resultCount,
           ' results for “',
@@ -291,14 +293,16 @@ const DebouncedWebSearch = craftComponent(
         ]),
         ul(
           { class: 'results' },
-          each(
+          forNode(
             searchQuery.resultBooks,
             { track: (book) => book.key },
             (book) =>
               article({ class: 'book' }, [
                 img({
                   src: function* () {
-                    return (yield* book()).coverUrl;
+                    return safeResourceUrl((yield* book()).coverUrl, {
+                      allowedOrigins: ['https://covers.openlibrary.org'],
+                    });
                   },
                   alt: '',
                 }),
@@ -306,7 +310,9 @@ const DebouncedWebSearch = craftComponent(
                   a('book',
                     {
                       href: function* () {
-                        return (yield* book()).url;
+                        // URL fournie par une API tierce : elle passe par le
+                        // garde-fou avant d'atterrir dans le DOM.
+                        return safeUrl((yield* book()).url);
                       },
                       target: '_blank',
                       rel: 'noreferrer',
@@ -323,7 +329,7 @@ const DebouncedWebSearch = craftComponent(
           ),
         ),
       ]),
-      ifBlock(searchQuery.showEmpty, () =>
+      ifNode(searchQuery.showEmpty, () =>
         p({ class: 'hint' }, 'No books found.'),
       ),
     ]);
