@@ -14,12 +14,12 @@
     "lint:check": "eslint ."
   },
   "dependencies": {
-    "@craft-ts/component": "0.7.0-beta.21",
-    "@craft-ts/core": "0.7.0-beta.21",
-    "@craft-ts/dev-tools": "0.7.0-beta.21",
+    "@craft-ts/component": "0.7.0-beta.22",
+    "@craft-ts/core": "0.7.0-beta.22",
+    "@craft-ts/dev-tools": "0.7.0-beta.22",
     "rxjs": "~7.8.0",
-    "@craft-ts/i18n": "0.7.0-beta.21",
-    "@craft-ts/style": "0.7.0-beta.21"
+    "@craft-ts/i18n": "0.7.0-beta.22",
+    "@craft-ts/style": "0.7.0-beta.22"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
@@ -29,6 +29,6 @@
     "typescript": "6.0.3",
     "vite": "^8.2.2",
     "vitest": "^4.1.11",
-    "@craft-ts/style-testing": "0.7.0-beta.21"
+    "@craft-ts/style-testing": "0.7.0-beta.22"
   }
 }
