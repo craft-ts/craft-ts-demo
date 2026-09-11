@@ -12,7 +12,7 @@ export const LONG_PRESS_DURATION_MS = 450;
 
 type LongPressProps = {
   readonly longPressDuration: number;
-  readonly onLongPress: (event: PointerEvent) => unknown;
+  readonly onLongPress: (event: Event) => unknown;
 };
 
 /**
@@ -39,7 +39,7 @@ export const longPress = craftNodeDirective<LongPressProps>(
       const value = context.props.longPressDuration;
       const resolved =
         typeof value === 'function'
-          ? executeYieldable(value as () => number, [], context.injector)
+          ? executeYieldable(value, [], context.injector)
           : value;
       return typeof resolved === 'number' ? resolved : LONG_PRESS_DURATION_MS;
     };
@@ -55,7 +55,7 @@ export const longPress = craftNodeDirective<LongPressProps>(
           suppressClickOnce = true;
           const handler = context.props.onLongPress;
           if (typeof handler === 'function') {
-            executeYieldable(handler, [event as PointerEvent], context.injector);
+            executeYieldable(handler, [event], context.injector);
           }
         },
         durationMs(),
