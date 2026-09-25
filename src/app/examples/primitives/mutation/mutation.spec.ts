@@ -201,7 +201,7 @@ describe('primitive mutation template', () => {
       );
       const button =
         template.nativeElement.querySelector<HTMLButtonElement>(
-          '.update-user-name',
+          '[data-testid="update-user-name"]',
         );
       input!.value = 'Alice';
       input!.dispatchEvent(new Event('input', { bubbles: true }));
@@ -252,7 +252,7 @@ describe('primitive mutation template', () => {
     try {
       expect(
         template.nativeElement.querySelector<HTMLButtonElement>(
-          '.update-user-name',
+          '[data-testid="update-user-name"]',
         )?.disabled,
       ).toBe(true);
     } finally {
@@ -284,7 +284,7 @@ describe('primitive mutation logic', () => {
           ApiService: { getItemById, updateItem },
           StoragePersister: storage,
           CraftRouter: { navigate },
-        },
+        } as never,
       },
     );
 

@@ -1,5 +1,3 @@
-/* eslint-disable craft-ts/no-hardcoded-design-values -- Demo UI colours are intentionally local to this example. */
-import styles from './pixel-art.css' with { loader: 'text' };
 import {
   button,
   craftComponent,
@@ -21,6 +19,9 @@ import {
   craftMethod,
   state,
 } from '@craft-ts/core';
+import { assign } from '@craft-ts/style';
+import { example } from '../../shared/example.style';
+import { pixel, pixelColor, pixelVars } from './pixel.style';
 
 const DEFAULT_GRID_SIZE = 16;
 const EMPTY_COLOR = '#f8fafc';
@@ -42,9 +43,7 @@ const cellColor = (cell: { color: string } | undefined) =>
 
 const PixelArt = craftComponent(
   'PixelArt',
-  {
-    stylesUrl: styles,
-  },
+  {},
   function* () {
     const ui = yield* state(
       'ui',
@@ -120,11 +119,13 @@ const PixelArt = craftComponent(
       (_item, currentIndex) =>
         button('cell', {
           type: 'button',
-          class: 'pixel-cell',
+          class: pixel.cell,
+          'data-testid': 'pixel-cell',
           style: function* () {
-            return {
-              backgroundColor: cellColor(cells.selectCell(currentIndex)),
-            };
+            return assign(
+              pixelVars.fill,
+              pixelColor(cellColor(cells.selectCell(currentIndex))),
+            );
           },
           title: `Cell ${currentIndex + 1}`,
           *click() {
@@ -147,19 +148,19 @@ const PixelArt = craftComponent(
   },
   ({ ui, cells, renderedPixelGrid }) => {
 
-    return section([
-      header([
-        heading('Pixel Art Workshop'),
-        p(`${CELL_COUNT} cells with simple state and per-cell insertions.`),
+    return section({ class: example.card }, [
+      header({ class: example.stack }, [
+        heading({ class: example.title }, 'Pixel Art Workshop'),
+        p({ class: example.text, 'data-exampleText': 'muted' }, `${CELL_COUNT} cells with simple state and per-cell insertions.`),
       ]),
       div(
-        { class: 'pixel-palette' },
+        { class: pixel.palette },
         forNode(COLORS, { track: (color) => color }, (color) =>
           button('color', {
             type: 'button',
-            class: 'pixel-color',
+            class: pixel.swatch,
             style: function* () {
-              return { backgroundColor: yield* color() };
+              return assign(pixelVars.fill, pixelColor(yield* color()));
             },
             'aria-label': function* () {
               return `Choose ${yield* color()}`;
@@ -174,11 +175,12 @@ const PixelArt = craftComponent(
         'clear',
         {
           type: 'button',
+          class: example.button,
           click: cells.clearAll,
         },
         'Clear',
       ),
-      p([
+      p({ class: example.row }, [
         span(function* () {
           return `Painted cells: ${yield* cells.paintedCount()}/${INDEXES.length}`;
         }),
@@ -186,7 +188,7 @@ const PixelArt = craftComponent(
           return ` · Clicks: ${yield* cells.totalPaintActions()}`;
         }),
       ]),
-      div({ class: 'pixel-grid', role: 'grid' }, renderedPixelGrid),
+      div({ class: pixel.grid, role: 'grid' }, renderedPixelGrid),
     ]);
   },
 );
