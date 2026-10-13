@@ -7,6 +7,7 @@ import {
   input,
   p,
   pre,
+  withComponentProviders,
   type Input,
 } from '@craft-ts/component';
 import {
@@ -22,6 +23,7 @@ import {
   query,
   state,
   type CraftServiceInput,
+  craftExpose,
 } from '@craft-ts/core';
 import { StatusComponent } from '../../../ui/status.component';
 import { ApiService, type User } from './api.service';
@@ -30,7 +32,9 @@ import { example } from '../../shared/example.style';
 
 export const { provideUserMutation, UserMutation } = craftService(
   { name: 'UserMutation', providedIn: 'toProvide' },
-  function* (inputs: { userId: CraftServiceInput<string> }) {
+  function* (inputs: {
+    $provided: { readonly userId: CraftServiceInput<string> };
+  }) {
     const updateUserName = yield* mutation('updateUserName', {
       method: (payload: { userName: string; user: User }) => ({
         ...payload.user,
@@ -41,10 +45,10 @@ export const { provideUserMutation, UserMutation } = craftService(
       },
     });
 
-    const user = yield* query(
+    yield* query(
       'user',
       {
-        params: inputs.userId,
+        params: inputs.$provided.userId,
         loader: function* ({ params: userId }) {
           return yield* ApiService.getItemById(userId);
         },
@@ -65,79 +69,76 @@ export const { provideUserMutation, UserMutation } = craftService(
         }),
       ),
     );
-
-    return { user, updateUserName };
   },
 );
 
-const MutationCraft = craftComponent(
-  'MutationCraft',
-  {
-    providers: [provideUserMutation()],
-  },
-  function* (userId: Input<string>) {
-    const store = yield* UserMutation({
-      userId,
-    });
-    const nameInput = yield* state('nameInput', '', ({ set }) => ({
+export const { MutationCraftView, provideMutationCraftView } = craftService(
+  { name: 'mutationCraftView', providedIn: 'toProvide' },
+  function* (inputs: {
+    readonly $provided: { readonly userId: CraftServiceInput<string> };
+  }) {
+    const { userId } = inputs.$provided;
+
+    const store = yield* UserMutation();
+    yield* state('nameInput', '', ({ set }) => ({
       setName: (value: string) => set(value),
     }));
-    const hasUser = craftComputed('hasUser', () => store.user.hasValue());
-    const userValueJson = craftComputed('userValueJson', function* () {
+    yield* craftComputed('hasUser', () => store.user.hasValue());
+    yield* craftComputed('userValueJson', function* () {
       return JSON.stringify(yield* store.user.value(), null, 2);
     });
-    const updateUserNameFn = craftMethod(
-      'updateUserNameFn',
-      function* (newName: string) {
-        const { user, updateUserName } = yield* UserMutation(
-          undefined,
-          ({ user, updateUserName }) => ({ user, updateUserName }),
-        );
-        const _uservalue = yield* user.value();
-        const userValue = _uservalue;
-        if (userValue) {
-          yield* updateUserName.mutate({
-            userName: newName,
-            user: userValue,
-          });
-        }
-      },
-    );
+    yield* craftMethod('updateUserNameFn', function* (newName: string) {
+      const { user, updateUserName } = yield* UserMutation(
+        {},
+        ({ user, updateUserName }) => ({ user, updateUserName }),
+      );
+      const _uservalue = yield* user.value();
+      const userValue = _uservalue;
+      if (userValue) {
+        yield* updateUserName.mutate({
+          userName: newName,
+          user: userValue,
+        });
+      }
+    });
     const router = yield* CraftRouter(undefined, ({ navigate }) => ({
       navigate,
     }));
-    const navigate = craftMethod('navigate', function* (offset: number) {
+    yield* craftMethod('navigate', function* (offset: number) {
       void router.navigate({
         to: 'craft/mutation/:userId',
         params: { userId: String(Number((yield* userId()) ?? '0') + offset) },
       });
     });
-    return {
-      store,
-      nameInput,
-      setName: nameInput.setName,
-      hasUser,
-      userValueJson,
-      updateUserNameFn,
-      navigate,
-    };
+    yield* craftExpose('store', store);
   },
-  ({
-    store,
-    nameInput,
-    setName,
-    hasUser,
-    userValueJson,
-    updateUserNameFn,
-    navigate,
-  }) => {
-    return div({ class: example.card, 'data-exampleCard': 'dark' }, [
+);
+
+const MutationCraft = craftComponent(
+  'MutationCraft',
+  {},
+  (_inputs: { readonly userId: Input<string> }) =>
+    div({ class: example.card, 'data-exampleCard': 'dark' }, [
       heading({ class: example.title }, 'Update user'),
       div({ class: example.text }, [
         'User ',
-        StatusComponent({ status: store.user.status }),
-        ifNode(hasUser, () =>
-          pre('UserValue', { class: example.code }, userValueJson),
+        StatusComponent({
+          status: function* () {
+            const { store } = yield* MutationCraftView();
+            return yield* store.user.status();
+          },
+        }),
+        ifNode(
+          'hasUser',
+          function* () {
+            const { hasUser } = yield* MutationCraftView();
+            return yield* hasUser();
+          },
+          () =>
+            pre('UserValue', { class: example.code }, function* () {
+              const { userValueJson } = yield* MutationCraftView();
+              return yield* userValueJson();
+            }),
         ),
       ]),
       p(
@@ -148,9 +149,12 @@ const MutationCraft = craftComponent(
         class: example.input,
         type: 'text',
         placeholder: 'New name',
-        value: nameInput,
+        value: function* () {
+          const { nameInput } = yield* MutationCraftView();
+          return yield* nameInput();
+        },
         *input(event) {
-          yield* setName(eventValue(event));
+          yield* (yield* MutationCraftView()).nameInput.setName(eventValue(event));
         },
       }),
       button(
@@ -159,18 +163,26 @@ const MutationCraft = craftComponent(
           type: 'button',
           class: example.button,
           'data-testid': 'update-user-name',
-          disabled: store.updateUserName.isLoading,
+          disabled: function* () {
+            const { store } = yield* MutationCraftView();
+            return yield* store.updateUserName.isLoading();
+          },
           *click() {
             // This example intentionally demonstrates direct mutation wiring;
             // the form-based variant is covered by the full-demo example.
-            // eslint-disable-next-line craft-ts/require-form-for-input-action
-            yield* updateUserNameFn((yield* nameInput()) ?? '');
+             
+            (yield* MutationCraftView()).updateUserNameFn(
+              (yield* (yield* MutationCraftView()).nameInput()) ?? '',
+            );
           },
         },
         [
           'Update name ',
           StatusComponent({
-            status: store.updateUserName.status,
+            status: function* () {
+              const { store } = yield* MutationCraftView();
+              return yield* store.updateUserName.status();
+            },
           }),
         ],
       ),
@@ -180,7 +192,7 @@ const MutationCraft = craftComponent(
           class: example.button,
           type: 'button',
           *click() {
-            yield* navigate(-1);
+            (yield* MutationCraftView()).navigate(-1);
           },
         },
         'Previous user',
@@ -191,13 +203,17 @@ const MutationCraft = craftComponent(
           class: example.button,
           type: 'button',
           *click() {
-            yield* navigate(1);
+            (yield* MutationCraftView()).navigate(1);
           },
         },
         'Next user',
       ),
-    ]);
-  },
+    ]),
+).pipe(
+  withComponentProviders(({ userId }) => [
+    provideMutationCraftView({ userId }),
+    provideUserMutation({ userId }),
+  ]),
 );
 
 export default MutationCraft;

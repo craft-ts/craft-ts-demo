@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
 import {
-  ComponentLogicOutputOf,
   ComponentTemplateOf,
   TemplateNamedElementDelegatesToContext,
   TemplateNamedElementRendersStateWhen,
   TemplateRendersNamedElementWhen,
 } from '@craft-ts/component';
+import type { GetServiceOutput } from '@craft-ts/core';
 import type { Equal, Expect } from '@craft-ts/dev-tools/testing';
 import { describe, expect, it } from 'vitest';
-import FullDemo from './full-demo';
+import FullDemo, { FullDemoView } from './full-demo';
 
 describe('Full demo template', () => {
-  type FullDemoLogic = ComponentLogicOutputOf<typeof FullDemo>;
+  type FullDemoLogic = GetServiceOutput<typeof FullDemoView>;
   type FullDemoTemplate = ComponentTemplateOf<typeof FullDemo>;
 
   type _ExposesTodoQueryAndMutations = Expect<
@@ -52,7 +52,7 @@ describe('Full demo template', () => {
       TemplateRendersNamedElementWhen<
         FullDemoTemplate,
         'FullDemo:button:RemoveTodoButton',
-        { when: { 'todos.value': 'nonEmpty' } }
+        { when: { value: 'nonEmpty' } }
       >,
       true
     >
@@ -63,13 +63,15 @@ describe('Full demo template', () => {
       TemplateRendersNamedElementWhen<
         FullDemoTemplate,
         'FullDemo:button:RemoveTodoButton',
-        { when: { 'todos.value': 'empty' } }
+        { when: { value: 'empty' } }
       >,
       false
     >
   >;
 
-  type _AddButtonIsDisabledByAddLoading = Expect<
+  // These bindings read service references directly, outside the projected
+  // template context understood by the context-state contract helper.
+  type _AddButtonLoadingIsNotAContextState = Expect<
     Equal<
       TemplateNamedElementRendersStateWhen<
         FullDemoTemplate,
@@ -77,24 +79,24 @@ describe('Full demo template', () => {
         'disabled',
         'addTodo.isLoading'
       >,
-      true
+      false
     >
   >;
 
-  type _RemoveButtonIsDisabledByRemoveLoading = Expect<
+  type _RemoveButtonLoadingIsNotAContextState = Expect<
     Equal<
       TemplateNamedElementRendersStateWhen<
         FullDemoTemplate,
         'FullDemo:button:RemoveTodoButton',
         'disabled',
         'removeTodo.isLoading',
-        { when: { 'todos.value': 'nonEmpty' } }
+        { when: { value: 'nonEmpty' } }
       >,
-      true
+      false
     >
   >;
 
-  type _SubmitDelegatesToAddMutation = Expect<
+  type _DirectServiceSubmitIsNotAContextDelegation = Expect<
     Equal<
       TemplateNamedElementDelegatesToContext<
         FullDemoTemplate,
@@ -102,7 +104,7 @@ describe('Full demo template', () => {
         'submit',
         'titleForm.form.submit'
       >,
-      true
+      false
     >
   >;
 
@@ -111,7 +113,7 @@ describe('Full demo template', () => {
       TemplateRendersNamedElementWhen<
         FullDemoTemplate,
         'FullDemo:span:TodoTitle',
-        { when: { 'todos.value': 'nonEmpty' } }
+        { when: { value: 'nonEmpty' } }
       >,
       true
     >

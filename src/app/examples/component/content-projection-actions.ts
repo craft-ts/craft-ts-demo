@@ -13,15 +13,9 @@ import { componentUi, projectionDemo } from './component-demos.style';
 export const userBadge = craftComponent(
   'userBadge',
   {},
-  (role: Input<string>) => ({ role }),
-  ({ role }) => span({ class: projectionDemo.badge }, role),
+  (inputs: { readonly role: Input<string> }) =>
+    span({ class: projectionDemo.badge }, inputs.role),
 );
-
-type ToolbarActionContract = {
-  readonly kind: 'toolbar-action';
-  readonly trigger: () => void;
-  readonly disabled: () => boolean;
-};
 
 export const toolbarAction = craftComponent(
   'toolbarAction',
@@ -31,26 +25,17 @@ export const toolbarAction = craftComponent(
     readonly content: ContentSlot;
     readonly trigger: () => void;
     readonly disabled?: () => boolean;
-  }) => ({
-    key: input.key,
-    contract: {
-      kind: 'toolbar-action',
-      trigger: input.trigger,
-      disabled: input.disabled ?? (() => false),
-    } satisfies ToolbarActionContract,
-    content: input.content,
-  }),
-  ({ contract, content: label }) =>
+  }) =>
     button(
       'action',
       {
         class: componentUi.button,
         'data-componentButton': 'primary',
         type: 'button',
-        disabled: contract.disabled,
-        click: contract.trigger,
+        disabled: input.disabled?.(),
+        click: input.trigger,
       },
-      renderContent(label),
+      renderContent(input.content),
     ),
 );
 

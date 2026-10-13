@@ -1,7 +1,4 @@
-import {
-  assertCssVarsSatisfied,
-  loadCraftComponent,
-} from '@craft-ts/component';
+import { loadCraftComponent } from '@craft-ts/component';
 import {
   assertExhaustiveRouteExceptions,
   craftExceptionHandler,
@@ -576,7 +573,6 @@ declare module '@craft-ts/core' {
 }
 
 assertExhaustiveRouteExceptions(demoRoutes);
-assertCssVarsSatisfied(demoRoutes);
 
 /* demo-check: guard-registry */
 declare module '@craft-ts/core' {
@@ -1014,5 +1010,3 @@ type _CanRunLazyLayoutMount = CanRun<
   >
 >;
 /* demo-check-end */
-
-

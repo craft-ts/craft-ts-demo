@@ -28,6 +28,7 @@ import {
   query,
   state,
   type ValidatedFormValue,
+  craftPrivate,
 } from '@craft-ts/core';
 import { StatusComponent } from '../../../ui/status.component';
 import { example } from '../../shared/example.style';
@@ -42,19 +43,23 @@ const INITIAL_TODOS = [
 export const { provideTodoStore, TodoStore } = craftService(
   { name: 'TodoStore', providedIn: 'toProvide' },
   function* () {
-    const nextId = yield* state('nextId', 3, ({ state, update }) => ({
-      take: function* () {
-        const _state = yield* state();
-        const id = _state;
-        yield* update((value) => value + 1);
-        return id;
-      },
-    }));
-    const records = yield* state('records', INITIAL_TODOS, ({ update }) => ({
-      add: (todo: Todo) => update((current) => [...current, todo]),
-      remove: (id: number) =>
-        update((current) => current.filter((todo) => todo.id !== id)),
-    }));
+    const nextId = yield* craftPrivate(
+      state('nextId', 3, ({ state, update }) => ({
+        take: function* () {
+          const _state = yield* state();
+          const id = _state;
+          yield* update((value) => value + 1);
+          return id;
+        },
+      })),
+    );
+    const records = yield* craftPrivate(
+      state('records', INITIAL_TODOS, ({ update }) => ({
+        add: (todo: Todo) => update((current) => [...current, todo]),
+        remove: (id: number) =>
+          update((current) => current.filter((todo) => todo.id !== id)),
+      })),
+    );
     const add = yield* mutation('add', {
       method: (title: NonNullable<ValidatedFormValue<string>>) => title.trim(),
       loader: function* ({ params: title }) {
@@ -70,7 +75,7 @@ export const { provideTodoStore, TodoStore } = craftService(
         return id;
       },
     });
-    const todos = yield* query(
+    yield* query(
       'todos',
       {
         // The list is loaded once. Mutations update its value through the
@@ -108,32 +113,34 @@ export const { provideTodoStore, TodoStore } = craftService(
         }),
       ),
     );
-    return { todos, add, remove };
+  },
+);
+
+export const { FullDemoCraftView, provideFullDemoCraftView } = craftService(
+  { name: 'fullDemoCraftView', providedIn: 'toProvide' },
+  function* () {
+    yield* TodoStore();
+    yield* state(
+      'titleForm',
+      '',
+      insertForm(
+        insertFormAttributes(() => ({ validators: [cRequired()] })),
+        insertFormSubmit(TodoStore.add),
+      ),
+    );
   },
 );
 
 const FullDemoCraft = craftComponent(
   'FullDemoCraft',
   {
-    providers: [provideTodoStore()],
+    providers: [provideFullDemoCraftView(), provideTodoStore()],
   },
-  function* () {
-    const store = yield* TodoStore();
-    const titleForm = yield* state(
-      'titleForm',
-      '',
-      insertForm(
-        insertFormAttributes(() => ({ validators: [cRequired()] })),
-        insertFormSubmit(store.add),
-      ),
-    );
-    return { store, titleForm };
-  },
-  ({ store, titleForm }) => {
-    return div({ class: example.page }, [
+  () =>
+    div({ class: example.page }, [
       heading({ class: example.title }, [
         'Full craftService demo ',
-        StatusComponent({ status: store.todos.status }),
+        StatusComponent({ status: FullDemoCraftView.todoStore.todos.status }),
       ]),
       p(
         { class: example.text, 'data-exampleText': 'muted' },
@@ -145,21 +152,21 @@ const FullDemoCraft = craftComponent(
           class: example.row,
           *submit(event) {
             event.preventDefault();
-            yield* titleForm.form.submit();
+            yield* FullDemoCraftView.titleForm.form.submit();
           },
         },
         [
           input('TodoNameToAddInput', {
             class: example.input,
             placeholder: 'New todo',
-          }).pipe(CraftFieldDirective(titleForm.form)),
+          }).pipe(CraftFieldDirective(FullDemoCraftView.titleForm.form)),
           button(
             'AddTodoButton',
             {
               class: example.button,
               'data-exampleButton': 'primary',
               type: 'submit',
-              disabled: store.add.isLoading,
+              disabled: FullDemoCraftView.todoStore.add.isLoading,
             },
             'Add',
           ),
@@ -176,7 +183,7 @@ const FullDemoCraft = craftComponent(
       ul(
         { class: example.list },
         forNode(
-          store.todos.value,
+          FullDemoCraftView.todoStore.todos.value,
           { track: (todo) => todo.id, empty: () => p('No todos.') },
           (todo) =>
             li({ class: example.item }, [
@@ -189,9 +196,11 @@ const FullDemoCraft = craftComponent(
                   class: example.button,
                   'data-exampleButton': 'danger',
                   type: 'button',
-                  disabled: store.remove.isLoading,
+                  disabled: FullDemoCraftView.todoStore.remove.isLoading,
                   *click() {
-                    yield* store.remove.mutate((yield* todo()).id);
+                    yield* FullDemoCraftView.todoStore.remove.mutate(
+                      (yield* todo()).id,
+                    );
                   },
                 },
                 'Remove',
@@ -199,8 +208,7 @@ const FullDemoCraft = craftComponent(
             ]),
         ),
       ),
-    ]);
-  },
+    ]),
 ).pipe(
   catchNode.exhaustive({
     FAILED_TO_LOAD: {

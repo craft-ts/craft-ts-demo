@@ -7,9 +7,11 @@ import {
   input,
   p,
   pre,
+  withComponentProviders,
   type Input,
 } from '@craft-ts/component';
 import {
+  craftService,
   CraftRouter,
   insertStoragePersister,
   craftUnique,
@@ -20,16 +22,20 @@ import {
   state,
   craftMethod,
   craftComputed,
+  type CraftServiceInput,
 } from '@craft-ts/core';
 import { StatusComponent } from '../../../ui/status.component';
 import { ApiService, type User } from './api.service';
 import { eventValue } from '../../../event-value';
 import { example } from '../../shared/example.style';
 
-const MutationDemoComponent = craftComponent(
-  'MutationDemoComponent',
-  {},
-  function* (userId: Input<string>) {
+export const { MutationDemoView, provideMutationDemoView } = craftService(
+  { name: 'mutationDemoView', providedIn: 'toProvide' },
+  function* (inputs: {
+    readonly $provided: { readonly userId: CraftServiceInput<string> };
+  }) {
+    const { userId } = inputs.$provided;
+
     const updateUserName = yield* mutation('updateUserName', {
       method: (payload: { userName: string; user: User }) => ({
         ...payload.user,
@@ -39,7 +45,7 @@ const MutationDemoComponent = craftComponent(
         return yield* ApiService.updateItem(user);
       },
     });
-    const nameInput = yield* state('nameInput', '', ({ set }) => ({
+    yield* state('nameInput', '', ({ set }) => ({
       setName: (value: string) => set(value.trim()),
     }));
     const userQuery = yield* query(
@@ -52,12 +58,6 @@ const MutationDemoComponent = craftComponent(
         preservePreviousValue: () => true,
       },
       insertQueryPipe(
-        ({ resource }) => ({
-          hasUser: craftComputed('hasUser', () => resource.hasValue()),
-          userValueJson: craftComputed('userValueJson', function* () {
-            return JSON.stringify(yield* resource.value(), null, 2);
-          }),
-        }),
         insertStoragePersister(
           craftUnique({
             storeName: 'demo-app',
@@ -72,17 +72,21 @@ const MutationDemoComponent = craftComponent(
         }),
       ),
     );
+    yield* craftComputed('hasUser', () => userQuery.hasValue());
+    yield* craftComputed('userValueJson', function* () {
+      return JSON.stringify(yield* userQuery.value(), null, 2);
+    });
     const router = yield* CraftRouter(undefined, ({ navigate }) => ({
       navigate,
     }));
 
-    const goTo = craftMethod('goTo', function* (offset: number) {
+    yield* craftMethod('goTo', function* (offset: number) {
       void router.navigate({
         to: 'mutation/:userId',
         params: { userId: String(Number((yield* userId()) ?? '0') + offset) },
       });
     });
-    const update = craftMethod('update', function* (name: string | undefined) {
+    yield* craftMethod('update', function* (name: string | undefined) {
       if (!name) {
         return;
       }
@@ -96,23 +100,34 @@ const MutationDemoComponent = craftComponent(
       }
     });
 
-    return {
-      userQuery,
-      updateUserName,
-      update,
-      goTo,
-      nameInput,
-      setName: nameInput.setName,
-    };
   },
-  ({ userQuery, updateUserName, update, goTo, nameInput, setName }) => {
-    return div({ class: example.card, 'data-exampleCard': 'dark' }, [
+);
+
+const MutationDemoComponent = craftComponent(
+  'MutationDemoComponent',
+  {},
+  (_inputs: { readonly userId: Input<string> }) =>
+    div({ class: example.card, 'data-exampleCard': 'dark' }, [
       heading({ class: example.title }, 'Update user'),
       div({ class: example.text }, [
         'User ',
-        StatusComponent({ status: userQuery.status }),
-        ifNode(userQuery.hasUser, () =>
-          pre('UserValue', { class: example.code }, userQuery.userValueJson),
+        StatusComponent({
+          status: function* () {
+            const { userQuery } = yield* MutationDemoView();
+            return yield* userQuery.status();
+          },
+        }),
+        ifNode(
+          'hasUser',
+          function* () {
+            const { hasUser } = yield* MutationDemoView();
+            return yield* hasUser();
+          },
+          () =>
+            pre('UserValue', { class: example.code }, function* () {
+              const { userValueJson } = yield* MutationDemoView();
+              return yield* userValueJson();
+            }),
         ),
       ]),
       p(
@@ -123,9 +138,12 @@ const MutationDemoComponent = craftComponent(
         class: example.input,
         type: 'text',
         placeholder: 'New name',
-        value: nameInput,
+        value: function* () {
+          const { nameInput } = yield* MutationDemoView();
+          return yield* nameInput();
+        },
         *input(event) {
-          yield* setName(eventValue(event));
+          yield* (yield* MutationDemoView()).nameInput.setName(eventValue(event));
         },
       }),
       button(
@@ -134,18 +152,26 @@ const MutationDemoComponent = craftComponent(
           type: 'button',
           class: example.button,
           'data-testid': 'update-user-name',
-          disabled: updateUserName.isLoading,
+          disabled: function* () {
+            const { updateUserName } = yield* MutationDemoView();
+            return yield* updateUserName.isLoading();
+          },
           click: function* () {
             // This example intentionally demonstrates direct mutation wiring;
             // the form-based variant is covered by the full-demo example.
-            // eslint-disable-next-line craft-ts/require-form-for-input-action
-            yield* update(yield* nameInput());
+             
+            (yield* MutationDemoView()).update(
+              yield* (yield* MutationDemoView()).nameInput(),
+            );
           },
         },
         [
           'Update name ',
           StatusComponent({
-            status: updateUserName.status,
+            status: function* () {
+              const { updateUserName } = yield* MutationDemoView();
+              return yield* updateUserName.status();
+            },
           }),
         ],
       ),
@@ -155,7 +181,7 @@ const MutationDemoComponent = craftComponent(
           class: example.button,
           type: 'button',
           click: function* () {
-            yield* goTo(-1);
+            (yield* MutationDemoView()).goTo(-1);
           },
         },
         'Previous user',
@@ -166,13 +192,14 @@ const MutationDemoComponent = craftComponent(
           class: example.button,
           type: 'button',
           click: function* () {
-            yield* goTo(1);
+            (yield* MutationDemoView()).goTo(1);
           },
         },
         'Next user',
       ),
-    ]);
-  },
+    ]),
+).pipe(
+  withComponentProviders(({ userId }) => [provideMutationDemoView({ userId })]),
 );
 
 export default MutationDemoComponent;

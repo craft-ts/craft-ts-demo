@@ -27,6 +27,7 @@ import {
   insertQueryPipe,
   query,
   queryParams,
+  craftExpose,
 } from '@craft-ts/core';
 import { paginationQueryParams } from '../../../query-params.utils';
 import { StatusComponent } from '../../../ui/status.component';
@@ -54,7 +55,7 @@ export const { provideUserList, UserList } = craftService(
         },
       }),
     );
-    const users = yield* query(
+    yield* query(
       'users',
       {
         params: pagination,
@@ -64,37 +65,43 @@ export const { provideUserList, UserList } = craftService(
         },
       },
       insertQueryPipe(
-        insertStoragePersister(craftUnique({
-          storeName: 'demo-app-craft',
-          key: 'list-with-pagination',
-        })),
+        insertStoragePersister(
+          craftUnique({
+            storeName: 'demo-app-craft',
+            key: 'list-with-pagination',
+          }),
+        ),
         insertPaginationPlaceholderData(
           { initialValue: Array<User>() },
-          ({ state }) => ({
-            total: craftComputed('total', function* () {
-              return (yield* state()).length;
-            }),
-          }),
+          function* ({ state }) {
+            return {
+              total: yield* craftComputed('total', function* () {
+                return (yield* state()).length;
+              }),
+            };
+          },
         ),
       ),
     );
-    return { pagination, users };
   },
 );
 
-const ListWithPaginationCraft = craftComponent(
-  'ListWithPaginationCraft',
-  {
-    providers: [provideUserList()],
-  },
+export const {
+  ListWithPaginationCraftView,
+  provideListWithPaginationCraftView,
+} = craftService(
+  { name: 'listWithPaginationCraftView', providedIn: 'toProvide' },
   function* () {
     const store = yield* UserList();
-    const isCurrentPageResolved = craftComputed(
+    yield* craftComputed(
       'isCurrentPageResolved',
       function* () {
-          const _storeuserscurrentPageStatus = yield* store.users.currentPageStatus(); return _storeuserscurrentPageStatus === 'resolved'; },
+        const _storeuserscurrentPageStatus =
+          yield* store.users.currentPageStatus();
+        return _storeuserscurrentPageStatus === 'resolved';
+      },
     );
-    const updatePageSize = craftMethod(
+    yield* craftMethod(
       'updatePageSize',
       function* (event: Event) {
         (yield* UserList()).pagination.updatePageSize(
@@ -102,118 +109,137 @@ const ListWithPaginationCraft = craftComponent(
         );
       },
     );
-    return { store, updatePageSize, isCurrentPageResolved };
+    yield* craftExpose('store', store);
   },
-  ({ store, updatePageSize, isCurrentPageResolved }) =>
-    div({ class: example.page }, [
-      main([
-        div([
-          div({ class: example.panel }, [
-            heading({ class: example.title }, [
-              'User Management: ',
-              // `currentPageStatus` is a settled read: it suspends whenever the
-              // page on screen has no value of its own. Its own boundary keeps
-              // the suspension off the rows, which the placeholder insertion
-              // keeps showing across a page change.
-              span({}, [
-                StatusComponent({
-                  status: store.users.currentPageStatus,
-                }),
-              ]).pipe(pendingNode({ fallback: () => span({}, '⏳') })),
-              span(
-                'TotalUsers',
-                { class: example.currentPage, 'data-testid': 'current-page' },
-                function* () {
-                  return ` ${yield* store.users.total()} on page`;
-                },
-              ),
-            ]),
-            // Only reached on the very first load: once a page has been
-            // shown, the placeholder keeps `currentPageData` non-empty, so the
-            // empty slot — and the settled read inside it — never runs again.
-            div([
-              table({ class: example.table }, [
-                thead( tr({ class: example.tableRow }, [th({ class: example.th }, 'ID'), th({ class: example.th }, 'Name')])),
-                tbody(
-                  forNode(
-                    store.users.currentPageData,
-                    {
-                      track: (user) => user.id,
-                      empty: () =>
-                        tr(
-                          td(
-                            {
-                              colSpan: 2,
-                              class: example.emptyCell,
-                            },
-                            ifNode(
-                              isCurrentPageResolved,
-                              () => 'No users found',
-                              () => 'Loading…',
-                            ),
-                          ),
-                        ),
-                    },
-                    (user) =>
-                      tr({ class: example.tableRow }, [
-                        td({ class: example.td }, function* () {
-                          return (yield* user()).id;
-                        }),
-                        td({ class: example.td }, function* () {
-                          return (yield* user()).name;
-                        }),
-                      ]),
-                  ),
+);
+
+const ListWithPaginationCraft = craftComponent(
+  'ListWithPaginationCraft',
+  {
+    providers: [provideListWithPaginationCraftView(), provideUserList()],
+  },
+  () => div({ class: example.page }, [
+        main([
+          div([
+            div({ class: example.panel }, [
+              heading({ class: example.title }, [
+                'User Management: ',
+                // `currentPageStatus` is a settled read: it suspends whenever the
+                // page on screen has no value of its own. Its own boundary keeps
+                // the suspension off the rows, which the placeholder insertion
+                // keeps showing across a page change.
+                span({}, [
+                  StatusComponent({
+                    status: ListWithPaginationCraftView.store.users.currentPageStatus,
+                  }),
+                ]).pipe(pendingNode({ fallback: () => span({}, '⏳') })),
+                span(
+                  'TotalUsers',
+                  { class: example.currentPage, 'data-testid': 'current-page' },
+                  function* () {
+                    return ` ${yield* ListWithPaginationCraftView.store.users.total()} on page`;
+                  },
                 ),
               ]),
-            ]).pipe(pendingNode({ fallback: () => div('⏳ Loading users…') })),
-            div({ class: example.pagination, 'data-testid': 'pagination' }, [
-              select(
-                'PageSize',
-                {
-                  class: example.select,
-                  'aria-label': 'Page size',
-                  value: function* () {
-                    return String((yield* store.pagination()).pageSize);
-                  },
-                  *change(event) {
-                    yield* updatePageSize(event);
-                  },
-                },
-                [2, 4, 8, 16].map((size) =>
-                  option(
-                    {
-                      value: String(size),
-                      selected: function* () {
-                        return size === (yield* store.pagination()).pageSize;
+              // Only reached on the very first load: once a page has been
+              // shown, the placeholder keeps `currentPageData` non-empty, so the
+              // empty slot — and the settled read inside it — never runs again.
+              div([
+                table({ class: example.table }, [
+                  thead(
+                    tr({ class: example.tableRow }, [
+                      th({ class: example.th }, 'ID'),
+                      th({ class: example.th }, 'Name'),
+                    ]),
+                  ),
+                  tbody(
+                    forNode(
+                      ListWithPaginationCraftView.store.users.currentPageData,
+                      {
+                        track: (user) => user.id,
+                        empty: () =>
+                          tr(
+                            td(
+                              {
+                                colSpan: 2,
+                                class: example.emptyCell,
+                              },
+                              ifNode(
+                                ListWithPaginationCraftView.isCurrentPageResolved,
+                                () => 'No users found',
+                                () => 'Loading…',
+                              ),
+                            ),
+                          ),
                       },
+                      (user) =>
+                        tr({ class: example.tableRow }, [
+                          td({ class: example.td }, function* () {
+                            return (yield* user()).id;
+                          }),
+                          td({ class: example.td }, function* () {
+                            return (yield* user()).name;
+                          }),
+                        ]),
+                    ),
+                  ),
+                ]),
+              ]).pipe(pendingNode({ fallback: () => div('⏳ Loading users…') })),
+              div({ class: example.pagination, 'data-testid': 'pagination' }, [
+                select(
+                  'PageSize',
+                  {
+                    class: example.select,
+                    'aria-label': 'Page size',
+                    value: function* () {
+                      return String((yield* ListWithPaginationCraftView.store.pagination()).pageSize);
                     },
-                    size,
+                    *change(event) {
+                      yield* ListWithPaginationCraftView.updatePageSize(event);
+                    },
+                  },
+                  [2, 4, 8, 16].map((size) =>
+                    option(
+                      {
+                        value: String(size),
+                        selected: function* () {
+                          return size === (yield* ListWithPaginationCraftView.store.pagination()).pageSize;
+                        },
+                      },
+                      size,
+                    ),
                   ),
                 ),
-              ),
-              button(
-                'PreviousPage',
-                { type: 'button', class: example.button, click: store.pagination.previousPage },
-                'Previous',
-              ),
-              span(
-                'CurrentPage',
-                { class: example.currentPage, 'data-testid': 'current-page' },
-                function* () {
-                  return (yield* store.pagination()).page;
-                },
-              ),
-              button(
-                'NextPage',
-                { type: 'button', class: example.button, click: store.pagination.nextPage },
-                'Next',
-              ),
+                button(
+                  'PreviousPage',
+                  {
+                    type: 'button',
+                    class: example.button,
+                    click: ListWithPaginationCraftView.store.pagination.previousPage,
+                  },
+                  'Previous',
+                ),
+                span(
+                  'CurrentPage',
+                  { class: example.currentPage, 'data-testid': 'current-page' },
+                  function* () {
+                    return (yield* ListWithPaginationCraftView.store.pagination()).page;
+                  },
+                ),
+                button(
+                  'NextPage',
+                  {
+                    type: 'button',
+                    class: example.button,
+                    click: ListWithPaginationCraftView.store.pagination.nextPage,
+                  },
+                  'Next',
+                ),
+              ]),
             ]),
           ]),
         ]),
       ]),
-    ]),
 );
 
 export default ListWithPaginationCraft;

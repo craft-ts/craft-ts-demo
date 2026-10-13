@@ -4,6 +4,7 @@ import {
   craftService,
   craftComputed,
   state,
+  craftExpose,
 } from '@craft-ts/core';
 import {
   button,
@@ -13,8 +14,10 @@ import {
   section,
   withProviders,
   heading,
+  headingSection,
 } from '@craft-ts/component';
 import { componentUi } from './component-demos.style';
+import { componentProvidersDemo } from './component-providers-demo';
 
 const noAccess = craftException({ _tag: 'NO_ACCESS' });
 const { RestrictedData, provideRestrictedData } = craftService(
@@ -22,74 +25,81 @@ const { RestrictedData, provideRestrictedData } = craftService(
   abstract<string | typeof noAccess>(),
 );
 
+export const { RestrictedContentView, provideRestrictedContentView } =
+  craftService(
+    { name: 'restrictedContentView', providedIn: 'toProvide' },
+    function* () {
+      yield* craftExpose('value', yield* RestrictedData());
+    },
+  );
+
 const restrictedContent = craftComponent(
   'restrictedContent',
-  {},
-  function* () {
-    return { value: yield* RestrictedData() };
-  },
-  ({ value }) =>
-    p(
-      { class: componentUi.restricted },
-      `Private data: ${value}`,
-    ),
+  { providers: [provideRestrictedContentView()] },
+  () =>
+    p({ class: componentUi.restricted }, function* () {
+      return `Private data: ${yield* RestrictedContentView.value()}`;
+    }),
 );
 
-export const componentCompositionDemo = craftComponent(
-  'componentCompositionDemo',
-  { host: { class: componentUi.host } },
+export const {
+  ComponentCompositionDemoView,
+  provideComponentCompositionDemoView,
+} = craftService(
+  { name: 'componentCompositionDemoView', providedIn: 'toProvide' },
   function* () {
     const canReadRestrictedData = yield* state(
       'canReadRestrictedData',
       false,
-      ({ update, state }) => ({
-        restriction: craftComputed('restriction', function* () {
-          return (yield* state()) ? 'accessible' : noAccess;
-        }),
+      ({ update }) => ({
         toggle: () => update((v) => !v),
       }),
     );
+    yield* craftComputed('restriction', function* () {
+      return (yield* canReadRestrictedData()) ? 'accessible' : noAccess;
+    });
 
-    const lastHandledException = yield* state(
-      'lastHandledException',
-      '',
-      ({ set }) => ({
-        showNoAccessText: () =>
-          set(
-            'NO_ACCESS handled by catchTag (the boundary renders no template).',
-          ),
-      }),
-    );
-    return {
-      canReadRestrictedData,
-      lastHandledException,
-    };
+    yield* state('lastHandledException', '', ({ set }) => ({
+      showNoAccessText: () =>
+        set(
+          'NO_ACCESS handled by catchTag (the boundary renders no template).',
+        ),
+    }));
   },
-  ({ canReadRestrictedData, lastHandledException }) =>
+);
+
+export const componentCompositionDemo = craftComponent(
+  'componentCompositionDemo',
+  {
+    providers: [provideComponentCompositionDemoView()],
+  },
+  () =>
     section({ class: componentUi.page }, [
       heading('Reactive composition with providers'),
       p(
         'The provider supplies data to the component. Click to go through the NO_ACCESS handler, then back to the template.',
       ),
-      button('accessToggle',
-        { type: 'button',
+      button(
+        'accessToggle',
+        {
+          type: 'button',
           class: componentUi.button,
           'data-componentButton': 'slate',
-          click: canReadRestrictedData.toggle,
+          click: ComponentCompositionDemoView.canReadRestrictedData.toggle,
         },
         'Toggle access',
       ),
-      p(lastHandledException),
+      p(ComponentCompositionDemoView.lastHandledException),
       restrictedContent.pipe(
         withProviders([
-          provideRestrictedData(canReadRestrictedData.restriction),
+          provideRestrictedData(ComponentCompositionDemoView.restriction),
         ]),
         catchTag.exhaustive({
           NO_ACCESS: function* () {
-            yield* lastHandledException.showNoAccessText();
-            return;
+            yield* ComponentCompositionDemoView.lastHandledException.showNoAccessText();
           },
         }),
       )({}),
+      headingSection([componentProvidersDemo()]),
     ]),
 );

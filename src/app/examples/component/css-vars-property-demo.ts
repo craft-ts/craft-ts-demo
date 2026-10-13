@@ -1,18 +1,24 @@
 import { button, craftComponent, div, heading, p } from '@craft-ts/component';
-import { state } from '@craft-ts/core';
+import { craftService, state } from '@craft-ts/core';
 import { CssVarsPageNav } from './css-vars-demo.shared';
 import { AssignedMeter, RegisteredMeter } from './css-vars-property.shared';
 import { cssVarsDemo } from './css-vars.style';
 import { example } from '../shared/example.style';
 
+const { CssVarsPropertyDemoView, provideCssVarsPropertyDemoView } =
+  craftService(
+    { name: 'cssVarsPropertyDemoView', providedIn: 'toProvide' },
+    function* () {
+      yield* state('meterValue', 78, ({ update }) => ({
+        nudge: () => update((current) => (current >= 100 ? 10 : current + 10)),
+      }));
+    },
+  );
+
 export const CssVarsPropertyDemo = craftComponent(
   'CssVarsPropertyDemo',
-  {},
+  { providers: [provideCssVarsPropertyDemoView()] },
   () =>
-    state('meterValue', 78, ({ update }) => ({
-      nudge: () => update((current) => (current >= 100 ? 10 : current + 10)),
-    })),
-  (meterValue) =>
     div({ class: cssVarsDemo.page }, [
       CssVarsPageNav(),
       div({ class: cssVarsDemo.intro }, [
@@ -24,7 +30,9 @@ export const CssVarsPropertyDemo = craftComponent(
       ]),
       div({ class: cssVarsDemo.grid }, [
         RegisteredMeter(),
-        AssignedMeter({ value: meterValue }),
+        AssignedMeter({
+          value: CssVarsPropertyDemoView.meterValue,
+        }),
       ]),
       button(
         'nudgeMeter',
@@ -32,7 +40,7 @@ export const CssVarsPropertyDemo = craftComponent(
           class: example.button,
           'data-exampleButton': 'primary',
           type: 'button',
-          click: meterValue.nudge,
+          click: CssVarsPropertyDemoView.meterValue.nudge,
         },
         'Move the second meter',
       ),

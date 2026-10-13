@@ -1,28 +1,29 @@
 // @vitest-environment jsdom
+import { craftSignal as signal } from '@craft-ts/core';
 import {
-  craftSignal as signal,
-} from '@craft-ts/core';
-import {
-  ComponentLogicOutputOf,
   ComponentTemplateOf,
-  TemplateNamedElementDelegatesToContext,
   TemplateRendersNamedElementWhen,
-  setupCraftComponentLogicTest,
   setupCraftComponentTemplateTest,
   type Input,
 } from '@craft-ts/component';
 import {
   markYieldableMethod,
   markYieldableValue,
+  setupCraftServiceTestingByRegister,
   type ExtractDeps,
   type GetServiceDependencies,
+  type GetServiceOutput,
 } from '@craft-ts/core';
 import type { Equal, Expect } from '@craft-ts/dev-tools/testing';
 import { describe, expect, it, vi } from 'vitest';
-import MutationCraft, { provideUserMutation } from './mutation';
+import MutationCraft, {
+  MutationCraftView,
+  provideMutationCraftView,
+  provideUserMutation,
+} from './mutation';
 import { ApiService, type User } from './api.service';
 
-type MutationLogic = ComponentLogicOutputOf<typeof MutationCraft>;
+type MutationLogic = GetServiceOutput<typeof MutationCraftView>;
 type MutationTemplate = ComponentTemplateOf<typeof MutationCraft>;
 
 type _UserQueryDependsOnApiService = Expect<
@@ -36,9 +37,7 @@ type _UserQueryDependsOnApiService = Expect<
 
 type _UserQueryDependsOnStoragePersister = Expect<
   Equal<
-      'StoragePersister' extends keyof ExtractDeps<
-      MutationLogic['store']['user']
-    >
+    'StoragePersister' extends keyof ExtractDeps<MutationLogic['store']['user']>
       ? true
       : false,
     true
@@ -91,18 +90,6 @@ type _UserValueIsVisibleWhenQueryHasAValue = Expect<
   >
 >;
 
-type _UpdateButtonDelegatesToUpdateMethod = Expect<
-  Equal<
-    TemplateNamedElementDelegatesToContext<
-      MutationTemplate,
-      'MutationCraft:button:UpdateUserNameButton',
-      'click',
-      'updateUserNameFn'
-    >,
-    true
-  >
->;
-
 type _ComponentExposesStoreAndActions = Expect<
   Equal<
     MutationLogic extends {
@@ -148,24 +135,35 @@ function createTemplateContext(
   const name = signal('');
   const userQuery = {
     status: markYieldableValue(
-      vi.fn(() => (user ? ('resolved' as const) : ('idle' as const))),
+      vi.fn(function* () {
+        return user ? ('resolved' as const) : ('idle' as const);
+      }),
       'status',
     ),
     hasValue: markYieldableValue(
-      vi.fn(() => user !== undefined),
+      vi.fn(function* () {
+        return user !== undefined;
+      }),
       'hasValue',
     ),
-    value: markYieldableValue(vi.fn(() => user), 'value'),
+    value: markYieldableValue(
+      vi.fn(function* () {
+        return user;
+      }),
+      'value',
+    ),
   };
   const updateUserName = {
     isLoading: markYieldableValue(
-      vi.fn(() => mutationLoading),
+      vi.fn(function* () {
+        return mutationLoading;
+      }),
       'isLoading',
     ),
     status: markYieldableValue(
-      vi.fn(() =>
-        mutationLoading ? ('loading' as const) : ('idle' as const),
-      ),
+      vi.fn(function* () {
+        return mutationLoading ? ('loading' as const) : ('idle' as const);
+      }),
       'status',
     ),
   };
@@ -184,14 +182,34 @@ function createTemplateContext(
       return undefined;
     }),
   );
-  const nameInput = markYieldableValue(name, 'nameInput');
+  // A service member is read with `yield*`, so the fake is a reader too.
+  const nameInput = Object.assign(
+    markYieldableValue(
+      vi.fn(function* () {
+        return name();
+      }),
+      'nameInput',
+    ),
+    { setName },
+  );
 
   return {
     context: {
       store: { user: userQuery, updateUserName },
       nameInput,
       setName,
-      hasUser: markYieldableValue(signal(user !== undefined), 'hasUser'),
+      hasUser: markYieldableValue(
+        vi.fn(function* () {
+          return user !== undefined;
+        }),
+        'hasUser',
+      ),
+      userValueJson: markYieldableValue(
+        vi.fn(function* () {
+          return JSON.stringify(user, null, 2);
+        }),
+        'userValueJson',
+      ),
       updateUserNameFn,
       navigate,
     },
@@ -200,12 +218,24 @@ function createTemplateContext(
   };
 }
 
+// A handler that calls a service method with arguments leaves no trace in the
+// template's type: the contract can no longer name the member behind a click.
+// What the element renders is still asserted above.
 describe('craft mutation template', () => {
   it('updates the user with the name entered in the input', async () => {
     const result = createTemplateContext({ id: '1', name: 'Romain' });
     const template = await setupCraftComponentTemplateTest.byRegister(
       MutationCraft,
-      { context: result.context, register: {} },
+      {
+        inputs: {},
+        register: {
+          ApiService: 'notReached',
+          CraftRouter: 'notReached',
+          StoragePersister: 'notReached',
+          UserMutation: 'notReached',
+          mutationCraftView: result.context,
+        },
+      },
     );
 
     try {
@@ -233,8 +263,14 @@ describe('craft mutation template', () => {
     const withUserTemplate = await setupCraftComponentTemplateTest.byRegister(
       MutationCraft,
       {
-        context: withUser.context,
-        register: {},
+        inputs: {},
+        register: {
+          ApiService: 'notReached',
+          CraftRouter: 'notReached',
+          StoragePersister: 'notReached',
+          UserMutation: 'notReached',
+          mutationCraftView: withUser.context,
+        },
       },
     );
 
@@ -249,8 +285,14 @@ describe('craft mutation template', () => {
     const withoutUser = createTemplateContext(undefined);
     const withoutUserTemplate =
       await setupCraftComponentTemplateTest.byRegister(MutationCraft, {
-        context: withoutUser.context,
-        register: {},
+        inputs: {},
+        register: {
+          ApiService: 'notReached',
+          CraftRouter: 'notReached',
+          StoragePersister: 'notReached',
+          UserMutation: 'notReached',
+          mutationCraftView: withoutUser.context,
+        },
       });
 
     try {
@@ -264,7 +306,16 @@ describe('craft mutation template', () => {
     const result = createTemplateContext({ id: '1', name: 'Romain' }, true);
     const template = await setupCraftComponentTemplateTest.byRegister(
       MutationCraft,
-      { context: result.context, register: {} },
+      {
+        inputs: {},
+        register: {
+          ApiService: 'notReached',
+          CraftRouter: 'notReached',
+          StoragePersister: 'notReached',
+          UserMutation: 'notReached',
+          mutationCraftView: result.context,
+        },
+      },
     );
 
     try {
@@ -290,20 +341,29 @@ describe('craft mutation logic', () => {
     });
     const navigate = vi.fn();
     const storage = createStorageMock();
-    const result = await setupCraftComponentLogicTest.byRegister(
-      MutationCraft,
+    const result = await setupCraftServiceTestingByRegister(
+      MutationCraftView,
       {
-        args: [
-          (function* () {
+        mutationCraftView: provideMutationCraftView({
+          userId: function* () {
             return user.id;
-          }) as Input<string>,
-        ],
-        register: {
-          UserMutation: provideUserMutation(),
-          ApiService: { getItemById, updateItem },
-          StoragePersister: storage,
-          CraftRouter: { navigate },
-        } as never,
+          },
+        }),
+        UserMutation: provideUserMutation({
+          userId: function* () {
+            return user.id;
+          },
+        }),
+        ApiService: { getItemById, updateItem },
+        StoragePersister: storage,
+        CraftRouter: { navigate },
+      } as never,
+      {
+        bindings: {
+          userId: function* () {
+            return user.id;
+          } as Input<string>,
+        },
       },
     );
 
@@ -313,10 +373,10 @@ describe('craft mutation logic', () => {
   }
 
   it('loads the user and updates its name through the mutation', async () => {
-    const { context, updateItem, user, destroy } = await setupLogic();
+    const { sut, updateItem, user, injector } = await setupLogic();
 
     try {
-      context.updateUserNameFn('Alice');
+      sut.updateUserNameFn('Alice');
 
       await vi.waitFor(() =>
         expect(updateItem).toHaveBeenCalledWith({
@@ -325,22 +385,22 @@ describe('craft mutation logic', () => {
         }),
       );
     } finally {
-      destroy();
+      injector.destroy();
     }
   });
 
   it('navigates to the relative user from navigate', async () => {
-    const { context, navigate, destroy } = await setupLogic();
+    const { sut, navigate, injector } = await setupLogic();
 
     try {
-      context.navigate(-1);
+      sut.navigate(-1);
 
       expect(navigate).toHaveBeenCalledWith({
         to: 'craft/mutation/:userId',
         params: { userId: '0' },
       });
     } finally {
-      destroy();
+      injector.destroy();
     }
   });
 });

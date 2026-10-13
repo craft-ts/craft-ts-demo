@@ -15,7 +15,7 @@ import {
   headingSection,
 } from '@craft-ts/component';
 import { craftComponent } from '@craft-ts/component';
-import { craftComputed, state } from '@craft-ts/core';
+import { craftService, state, craftExpose, on$, source$ } from '@craft-ts/core';
 
 import { card } from './content-projection-card';
 import { toolbarAction, userBadge } from './content-projection-actions';
@@ -42,67 +42,51 @@ const userRow = craftTemplate<{
   ]),
 );
 
+export const { ContentProjectionDemoView, provideContentProjectionDemoView } =
+  craftService(
+    { name: 'contentProjectionDemoView', providedIn: 'toProvide' },
+    function* () {
+      const showToolbar = yield* state('showToolbar', true, ({ update }) => ({
+        toggle: () => update((visible) => !visible),
+      }));
+      const confirmed$ = yield* source$<void>('confirmed$');
+      const dialogOpen = yield* state('dialogOpen', false, ({ set }) => ({
+        open: () => set(true),
+        closeFromToolbar: () => set(false),
+        confirmed$,
+        closeOnConfirmation: on$(confirmed$, () => set(false)),
+      }));
+      const lastActionLabel = yield* state(
+        'lastActionLabel',
+        'No action triggered yet.',
+        ({ set }) => ({
+          recordSave: () => set('Last action: Save'),
+          recordCancel: () => set('Last action: Cancel'),
+          recordDirect: () => set('Last action: Direct action'),
+          recordOnConfirmation: on$(confirmed$, () =>
+            set('Last action: Confirm'),
+          ),
+        }),
+      );
+      const users = [
+        { id: 1, name: 'Ada Lovelace', role: 'Algorithm pioneer' },
+        { id: 2, name: 'Grace Hopper', role: 'Compilers and systems' },
+        { id: 3, name: 'Margaret Hamilton', role: 'Embedded software' },
+      ] satisfies readonly DemoUser[];
+
+      yield* craftExpose('users', users);
+      yield* craftExpose('lastActionText', lastActionLabel);
+      yield* craftExpose('toolbarVisible', showToolbar);
+      yield* craftExpose('dialogVisible', dialogOpen);
+    },
+  );
+
 export const contentProjectionDemo = craftComponent(
   'contentProjectionDemo',
-  { host: { class: componentUi.host } },
-  function* () {
-    const showToolbar = yield* state('showToolbar', true, ({ update }) => ({
-      toggle: () => update((visible) => !visible),
-    }));
-    const dialogOpen = yield* state('dialogOpen', false, ({ set }) => ({
-      open: () => set(true),
-      closeFromToolbar: () => set(false),
-      closeFromConfirmation: () => set(false),
-    }));
-    const lastAction = yield* state(
-      'lastAction',
-      'No action triggered yet.',
-      ({ state, set }) => ({
-        recordSave: () => set('Save'),
-        recordCancel: () => set('Cancel'),
-        recordDirect: () => set('Direct action'),
-        recordConfirm: () => set('Confirm'),
-        lastActionLabel: craftComputed('lastActionLabel', function* () {
-          return `Last action: ${yield* state()}`;
-        }),
-      }),
-    );
-    const users = [
-      { id: 1, name: 'Ada Lovelace', role: 'Algorithm pioneer' },
-      { id: 2, name: 'Grace Hopper', role: 'Compilers and systems' },
-      { id: 3, name: 'Margaret Hamilton', role: 'Embedded software' },
-    ] satisfies readonly DemoUser[];
-
-    return {
-      users,
-      showToolbar,
-      dialogOpen,
-      lastAction,
-      lastActionLabel: lastAction.lastActionLabel,
-      toggleToolbar: showToolbar.toggle,
-      openDialog: dialogOpen.open,
-      closeDialogFromToolbar: dialogOpen.closeFromToolbar,
-      closeDialogFromConfirmation: dialogOpen.closeFromConfirmation,
-      recordSave: lastAction.recordSave,
-      recordCancel: lastAction.recordCancel,
-      recordDirect: lastAction.recordDirect,
-      recordConfirm: lastAction.recordConfirm,
-    };
+  {
+    providers: [provideContentProjectionDemoView()],
   },
-  ({
-    users,
-    showToolbar,
-    dialogOpen,
-    lastActionLabel,
-    toggleToolbar,
-    openDialog,
-    closeDialogFromToolbar,
-    closeDialogFromConfirmation,
-    recordSave,
-    recordCancel,
-    recordDirect,
-    recordConfirm,
-  }) =>
+  () =>
     section({ class: componentUi.page, 'data-componentPage': 'wide' }, [
       heading('Content projection and logical contracts'),
       headingSection([
@@ -118,11 +102,14 @@ export const contentProjectionDemo = craftComponent(
             ),
             ul(
               { class: projectionDemo.list },
-              forNode(users, { track: (user) => user.id }, (user, index) =>
-                renderTemplate(userRow, {
-                  $implicit: user,
-                  index,
-                }),
+              forNode(
+                ContentProjectionDemoView.users,
+                { track: (user) => user.id },
+                (user, index) =>
+                  renderTemplate(userRow, {
+                    $implicit: user,
+                    index,
+                  }),
               ),
             ),
           ]),
@@ -141,35 +128,40 @@ export const contentProjectionDemo = craftComponent(
             p(
               'ToolbarAction exposes a contract. Toolbar receives an explicit collection, renders it with renderContent(), and reconciles it by key.',
             ),
-            p({ class: projectionDemo.status }, lastActionLabel),
+            p(
+              { class: projectionDemo.status },
+              ContentProjectionDemoView.lastActionText,
+            ),
             button(
-              'toggleToolbar',
+              'ContentProjectionDemoView.showToolbar.toggle',
               {
                 class: componentUi.button,
                 'data-componentButton': 'primary',
                 type: 'button',
-                click: toggleToolbar,
+                click: ContentProjectionDemoView.showToolbar.toggle,
               },
               ifNode(
-                showToolbar,
+                'toolbarVisible',
+                ContentProjectionDemoView.toolbarVisible,
                 () => 'Hide the toolbar',
                 () => 'Show the toolbar',
               ),
             ),
             ifNode(
-              showToolbar,
+              'toolbarVisible',
+              ContentProjectionDemoView.toolbarVisible,
               () =>
                 toolbar({
                   actions: [
                     toolbarAction({
                       key: 'save',
                       content: () => 'Save',
-                      trigger: recordSave,
+                      trigger: ContentProjectionDemoView.lastActionLabel.recordSave,
                     }),
                     toolbarAction({
                       key: 'cancel',
                       content: () => 'Cancel',
-                      trigger: recordCancel,
+                      trigger: ContentProjectionDemoView.lastActionLabel.recordCancel,
                     }),
                   ],
                 }),
@@ -179,22 +171,23 @@ export const contentProjectionDemo = craftComponent(
             toolbarAction({
               key: 'direct',
               content: () => 'Direct action',
-              trigger: recordDirect,
+              trigger: ContentProjectionDemoView.lastActionLabel.recordDirect,
             }),
             button(
-              'openDialog',
+              'ContentProjectionDemoView.dialogOpen.open',
               {
                 class: componentUi.button,
                 'data-componentButton': 'primary',
                 type: 'button',
-                click: openDialog,
+                click: ContentProjectionDemoView.dialogOpen.open,
               },
               'Open the projected dialog',
             ),
           ],
         ),
         ifNode(
-          dialogOpen,
+          'dialogVisible',
+          ContentProjectionDemoView.dialogVisible,
           () =>
             dialog({
               body: content(() =>
@@ -209,15 +202,12 @@ export const contentProjectionDemo = craftComponent(
                 toolbarAction({
                   key: 'close',
                   content: () => 'Close',
-                  trigger: closeDialogFromToolbar,
+                  trigger: ContentProjectionDemoView.dialogOpen.closeFromToolbar,
                 }),
                 toolbarAction({
                   key: 'confirm',
                   content: () => 'Confirm',
-                  trigger: function* () {
-                    yield* recordConfirm();
-                    yield* closeDialogFromConfirmation();
-                  },
+                  trigger: ContentProjectionDemoView.dialogOpen.confirmed$,
                 }),
               ],
             }),

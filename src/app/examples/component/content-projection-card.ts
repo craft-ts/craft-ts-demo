@@ -22,17 +22,18 @@ type CardInput = {
 export const card = craftComponent(
   'card',
   {},
-  (input: CardInput) => ({
-    header:
-      input.header ??
-      content(() =>
-        heading({ class: projectionDemo.fallback }, 'Default title'),
-      ),
-    body: input.body,
-  }),
-  ({ header, body }) =>
+  (input: CardInput) =>
     section({ class: projectionDemo.card }, [
-      renderContent('header', header),
-      section({ class: projectionDemo.body }, renderContent('body', body)),
+      renderContent(
+        'header',
+        input.header ??
+          content(() =>
+            heading({ class: projectionDemo.fallback }, 'Default title'),
+          ),
+      ),
+      section(
+        { class: projectionDemo.body },
+        renderContent('body', input.body),
+      ),
     ]),
 );

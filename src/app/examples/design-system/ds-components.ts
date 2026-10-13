@@ -34,23 +34,22 @@ export type Size = 'sm' | 'md' | 'lg';
 export const DsButton = craftComponent(
   'DsButton',
   {},
-  (
-    label: Input<string>,
-    tone: Input<Tone>,
-    size: Input<Size>,
-    press: Output<() => void>,
-  ) => ({ label, tone, size, press }),
-  ({ label, tone, size, press }) =>
+  (inputs: {
+    readonly label: Input<string>;
+    readonly tone: Input<Tone>;
+    readonly size: Input<Size>;
+    readonly press: Output<() => void>;
+  }) =>
     buttonEl(
       'dsButton',
       {
         type: 'button',
         class: button.root,
-        'data-tone': tone,
-        'data-size': size,
-        click: press,
+        'data-tone': inputs.tone,
+        'data-size': inputs.size,
+        click: inputs.press,
       },
-      label,
+      inputs.label,
     ),
 );
 
@@ -60,16 +59,18 @@ export type DsButton = typeof DsButton;
 export const DsGhostButton = craftComponent(
   'DsGhostButton',
   {},
-  (label: Input<string>, press: Output<() => void>) => ({ label, press }),
-  ({ label, press }) =>
+  (inputs: {
+    readonly label: Input<string>;
+    readonly press: Output<() => void>;
+  }) =>
     buttonEl(
       'dsGhostButton',
       {
         type: 'button',
         class: button.ghost,
-        click: press,
+        click: inputs.press,
       },
-      label,
+      inputs.label,
     ),
 );
 

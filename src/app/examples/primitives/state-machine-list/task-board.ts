@@ -10,10 +10,12 @@ import {
   section,
   span,
   ul,
+  withComponentProviders,
   type Input,
 } from '@craft-ts/component';
 import { eventValue } from '../../../event-value';
 import {
+  craftService,
   craftComputed,
   craftStateMachine,
   initStateMachine,
@@ -23,6 +25,8 @@ import {
   transitionStep,
   withBackNavigation,
   withStateMachineHistory,
+  craftExpose,
+  type CraftServiceInput,
 } from '@craft-ts/core';
 import { example } from '../../shared/example.style';
 import { taskBoard } from './task-board.style';
@@ -46,13 +50,16 @@ const TASKS: readonly Task[] = [
  * the component instance that holds them. That is what keeps each row's
  * snapshot capturing its own primitives and nobody else's.
  */
-const TaskRow = craftComponent(
-  'TaskRow',
-  {},
-  function* (task: Input<Task>) {
+export const { TaskRowView, provideTaskRowView } = craftService(
+  { name: 'taskRowView', providedIn: 'toProvide' },
+  function* (inputs: {
+    readonly $provided: { readonly task: CraftServiceInput<Task> };
+  }) {
+    const { task } = inputs.$provided;
+
     const { id, title } = yield* task();
-    const machine = yield* craftStateMachine(
-      'taskRow',
+    yield* craftStateMachine(
+      'machine',
 
       function* () {
         const note = yield* state('note', '', ({ set }) => ({
@@ -105,38 +112,41 @@ const TaskRow = craftComponent(
           setNote: function* (value: string) {
             yield* machineContext.context.note.to(value);
           },
-          step: craftComputed('step', function* () {
+          step: yield* craftComputed('step', function* () {
             return (yield* machineContext.currentStep()) ?? 'todo';
           }),
-          isTodo: craftComputed('isTodo', function* () {
+          isTodo: yield* craftComputed('isTodo', function* () {
             return (yield* machineContext.currentStep()) === 'todo';
           }),
-          isDoing: craftComputed('isDoing', function* () {
+          isDoing: yield* craftComputed('isDoing', function* () {
             return (yield* machineContext.currentStep()) === 'doing';
           }),
-          isDone: craftComputed('isDone', function* () {
+          isDone: yield* craftComputed('isDone', function* () {
             return (yield* machineContext.currentStep()) === 'done';
           }),
-          startDisabled: craftComputed('startDisabled', function* () {
+          startDisabled: yield* craftComputed('startDisabled', function* () {
             return (yield* machineContext.currentStep()) !== 'todo';
           }),
-          finishDisabled: craftComputed('finishDisabled', function* () {
+          finishDisabled: yield* craftComputed('finishDisabled', function* () {
             return (yield* machineContext.currentStep()) !== 'doing';
           }),
-          reopenDisabled: craftComputed('reopenDisabled', function* () {
+          reopenDisabled: yield* craftComputed('reopenDisabled', function* () {
             return (yield* machineContext.currentStep()) === 'todo';
           }),
-          historyLabel: craftComputed('historyLabel', function* () {
+          historyLabel: yield* craftComputed('historyLabel', function* () {
             const entries = yield* history.history();
             const cursor = yield* history.historyCursor();
             return `${title} · moment ${cursor + 1}/${entries.length}`;
           }),
-          backDisabled: craftComputed('backDisabled', function* () {
+          backDisabled: yield* craftComputed('backDisabled', function* () {
             return !(yield* history.canGoBack());
           }),
-          forwardDisabled: craftComputed('forwardDisabled', function* () {
-            return !(yield* history.canGoForward());
-          }),
+          forwardDisabled: yield* craftComputed(
+            'forwardDisabled',
+            function* () {
+              return !(yield* history.canGoForward());
+            },
+          ),
           start: () => machineContext.context.start$.emit(),
           finish: () => machineContext.context.finish$.emit(),
           reopen: () => machineContext.context.reopen$.emit(),
@@ -144,15 +154,27 @@ const TaskRow = craftComponent(
       },
     );
 
-    return { machine, title, id };
+    yield* craftExpose('title', title);
+    yield* craftExpose('id', id);
   },
-  ({ machine, title }) =>
+);
+
+const TaskRow = craftComponent(
+  'TaskRow',
+  {},
+  (_inputs: { readonly task: Input<Task> }) =>
     li({ class: taskBoard.row }, [
       div({ class: taskBoard.head }, [
-        span({ class: taskBoard.title }, title),
+        span({ class: taskBoard.title }, function* () {
+          const { title } = yield* TaskRowView();
+          return title;
+        }),
         span(
           { class: example.badge, 'data-testid': 'task-step' },
-          machine.step,
+          function* () {
+            const { machine } = yield* TaskRowView();
+            return yield* machine.step();
+          },
         ),
       ]),
 
@@ -161,9 +183,12 @@ const TaskRow = craftComponent(
         class: example.input,
         'data-exampleField': 'wide',
         placeholder: 'Note recorded with each move…',
-        value: machine.note,
+        value: function* () {
+          const { machine } = yield* TaskRowView();
+          return yield* machine.note();
+        },
         *input(event) {
-          yield* machine.setNote(eventValue(event));
+          yield* (yield* TaskRowView()).machine.setNote(eventValue(event));
         },
       }),
 
@@ -174,8 +199,11 @@ const TaskRow = craftComponent(
             class: example.button,
             'data-exampleButton': 'primary',
             type: 'button',
-            disabled: machine.startDisabled,
-            click: machine.start,
+            disabled: function* () {
+              const { machine } = yield* TaskRowView();
+              return yield* machine.startDisabled();
+            },
+            click: TaskRowView.machine.start,
           },
           'Start',
         ),
@@ -185,8 +213,11 @@ const TaskRow = craftComponent(
             class: example.button,
             'data-exampleButton': 'primary',
             type: 'button',
-            disabled: machine.finishDisabled,
-            click: machine.finish,
+            disabled: function* () {
+              const { machine } = yield* TaskRowView();
+              return yield* machine.finishDisabled();
+            },
+            click: TaskRowView.machine.finish,
           },
           'Finish',
         ),
@@ -195,8 +226,11 @@ const TaskRow = craftComponent(
           {
             type: 'button',
             class: example.button,
-            disabled: machine.reopenDisabled,
-            click: machine.reopen,
+            disabled: function* () {
+              const { machine } = yield* TaskRowView();
+              return yield* machine.reopenDisabled();
+            },
+            click: TaskRowView.machine.reopen,
           },
           'Reopen',
         ),
@@ -208,8 +242,11 @@ const TaskRow = craftComponent(
           {
             type: 'button',
             class: example.button,
-            disabled: machine.backDisabled,
-            click: machine.back,
+            disabled: function* () {
+              const { machine } = yield* TaskRowView();
+              return yield* machine.backDisabled();
+            },
+            click: TaskRowView.machine.back,
           },
           '← Back',
         ),
@@ -218,22 +255,25 @@ const TaskRow = craftComponent(
           {
             type: 'button',
             class: example.button,
-            disabled: machine.forwardDisabled,
-            click: machine.forward,
+            disabled: function* () {
+              const { machine } = yield* TaskRowView();
+              return yield* machine.forwardDisabled();
+            },
+            click: TaskRowView.machine.forward,
           },
           'Forward →',
         ),
-        span({ class: example.hint }, machine.historyLabel),
+        span({ class: example.hint }, function* () {
+          const { machine } = yield* TaskRowView();
+          return yield* machine.historyLabel();
+        }),
       ]),
     ]),
-);
+).pipe(withComponentProviders(({ task }) => [provideTaskRowView({ task })]));
 
 const TaskBoardStateMachineList = craftComponent(
   'TaskBoardStateMachineList',
   {},
-  function* () {
-    return {};
-  },
   () =>
     section({ class: example.card }, [
       heading({ class: example.title }, 'State machine — one per row'),

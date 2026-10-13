@@ -17,11 +17,10 @@ import { projectionDemo } from './component-demos.style';
 export const toolbar = craftComponent(
   'toolbar',
   {},
-  (input: { readonly actions: ToolbarActionSlot }) => input,
-  ({ actions }) =>
+  (input: { readonly actions: ToolbarActionSlot }) =>
     div(
       { class: projectionDemo.toolbar, role: 'toolbar' },
-      forNode(actions, { track: (action) => action.key }, (action) =>
+      forNode(input.actions, { track: (action) => action.key }, (action) =>
         renderContent(action),
       ),
     ),
@@ -33,16 +32,14 @@ export const dialog = craftComponent(
   (input: {
     readonly body?: ContentSlot;
     readonly actions: readonly ProjectionOf<typeof toolbarAction>[];
-  }) => ({
-    body: input.body ?? content(() => p('No dialog content provided.')),
-    actions: input.actions,
-  }),
-  ({ body, actions }) =>
+  }) =>
     section({ class: projectionDemo.dialog, role: 'dialog' }, [
-      renderContent(body),
+      renderContent(
+        input.body ?? content(() => p('No dialog content provided.')),
+      ),
       footer(
         { class: projectionDemo.toolbar },
-        forNode(actions, { track: (action) => action.key }, (action) =>
+        forNode(input.actions, { track: (action) => action.key }, (action) =>
           renderContent(action),
         ),
       ),

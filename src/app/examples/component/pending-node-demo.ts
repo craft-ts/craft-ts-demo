@@ -10,8 +10,15 @@ import {
   ul,
   heading,
 } from '@craft-ts/component';
-import { craftComputed, craftSleep, query, settled } from '@craft-ts/core';
-import { componentUi, pendingDemo } from './component-demos.style';
+import {
+  craftService,
+  craftComputed,
+  craftMethod,
+  craftSleep,
+  query,
+  settled,
+} from '@craft-ts/core';
+import { pendingDemo } from './component-demos.style';
 
 interface DemoUser {
   readonly id: number;
@@ -33,11 +40,8 @@ const USERS: readonly DemoUser[] = [
  * boundary below is a **compile error**, not an `undefined` leaking into the
  * render.
  */
-export const pendingNodeDemo = craftComponent(
-  'pendingNodeDemo',
-  {
-    host: { class: componentUi.host },
-  },
+export const { PendingNodeDemoView, providePendingNodeDemoView } = craftService(
+  { name: 'pendingNodeDemoView', providedIn: 'toProvide' },
   function* () {
     const users = yield* query(
       'users',
@@ -52,25 +56,33 @@ export const pendingNodeDemo = craftComponent(
           return { items: USERS };
         },
       },
-      ({ resource }) => ({
-        teams: craftComputed('teams', function* () {
-          const list = yield* settled(resource);
-          return [...new Set(list.items.map((user) => user.team))]
-            .sort()
-            .join(' · ');
-        }),
-        total: craftComputed('total', function* () {
-          const list = yield* settled(resource);
-          return `${list.items.length} people`;
-        }),
-      }),
+      () => ({}),
     );
 
-    yield* users.call(undefined); // trigger first call
+    yield* craftComputed('teams', function* () {
+      const list = yield* settled(users);
+      return [...new Set(list.items.map((user) => user.team))]
+        .sort()
+        .join(' · ');
+    });
+    yield* craftComputed('total', function* () {
+      const list = yield* settled(users);
+      return `${list.items.length} people`;
+    });
+    yield* craftMethod('reload', function* () {
+      yield* users.call(undefined);
+    });
 
-    return { users };
+    yield* users.call(undefined); // trigger first call
   },
-  ({ users }) =>
+);
+
+export const pendingNodeDemo = craftComponent(
+  'pendingNodeDemo',
+  {
+    providers: [providePendingNodeDemoView()],
+  },
+  () =>
     section({ class: pendingDemo.page }, [
       heading('settledValue + pendingNode'),
       p(
@@ -81,16 +93,14 @@ export const pendingNodeDemo = craftComponent(
         {
           type: 'button',
           class: pendingDemo.actionButton,
-          *click() {
-            yield* users.call(undefined);
-          },
+          click: PendingNodeDemoView.reload,
         },
         'Reload',
       ),
       div([
         ul({ class: pendingDemo.list }, [
-          li(['Teams: ', span(users.teams)]),
-          li({ class: pendingDemo.count }, users.total),
+          li(['Teams: ', span(PendingNodeDemoView.teams)]),
+          li({ class: pendingDemo.count }, PendingNodeDemoView.total),
         ]),
       ]).pipe(
         // One boundary covers both computeds. Remove this line and

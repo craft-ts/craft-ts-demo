@@ -1,4 +1,9 @@
-import { craftComponent, div, span, type Input } from '@craft-ts/component';
+import {
+  craftComponent,
+  div,
+  span,
+  type Input,
+} from '@craft-ts/component';
 import { assign, unit } from '@craft-ts/style';
 import { alert, meter, meterVars } from './components.style';
 
@@ -6,18 +11,17 @@ import { alert, meter, meterVars } from './components.style';
 export const DsAlert = craftComponent(
   'DsAlert',
   {},
-  (
-    message: Input<string>,
-    tone: Input<'neutral' | 'info' | 'success' | 'warning' | 'danger'>,
-  ) => ({ message, tone }),
-  ({ message, tone }) =>
+  (inputs: {
+    readonly message: Input<string>;
+    readonly tone: Input<'neutral' | 'info' | 'success' | 'warning' | 'danger'>;
+  }) =>
     div(
       {
         class: alert.root,
         role: 'status',
-        'data-tone': tone,
+        'data-tone': inputs.tone,
       },
-      message,
+      inputs.message,
     ),
 );
 
@@ -27,8 +31,10 @@ export type DsAlert = typeof DsAlert;
 export const DsMeter = craftComponent(
   'DsMeter',
   {},
-  (value: Input<number>, caption: Input<string>) => ({ value, caption }),
-  ({ value, caption }) =>
+  (inputs: {
+    readonly value: Input<number>;
+    readonly caption: Input<string>;
+  }) =>
     div({ class: meter.root }, [
       div(
         {
@@ -36,20 +42,24 @@ export const DsMeter = craftComponent(
           role: 'progressbar',
           'aria-valuemin': 0,
           'aria-valuemax': 100,
-          'aria-valuenow': value,
-          'aria-label': caption,
+          'aria-valuenow': inputs.value,
+          'aria-label': inputs.caption,
         },
         [
           div({
             class: meter.fill,
+            // The width is a typed variable, written by assign.
             style: function* () {
-              return assign(meterVars.value, unit.pct(yield* value()));
+              return assign(
+                meterVars.value,
+                unit.pct(yield* inputs.value()),
+              );
             },
           }),
         ],
       ),
       span({ class: meter.label }, function* () {
-        return `${yield* caption()} — ${yield* value()}%`;
+        return `${yield* inputs.caption()} — ${yield* inputs.value()}%`;
       }),
     ]),
 );
