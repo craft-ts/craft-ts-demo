@@ -10,6 +10,7 @@ import {
   query,
   craftRoute,
   craftSleep,
+  CraftTemporalRuntime,
   retry,
   craftUntilSettled,
   type CanRun,
@@ -24,7 +25,7 @@ import { loadCraftComponent } from '@craft-ts/component';
 // runs the stay→blank→loader phases, and the target is mounted ONLY once BOTH the guard
 // and the resolve have settled. Both are cached global queries, so the FIRST
 // visit is slow (pending UI) and a revisit is instant (warm cache) — use the
-// 🗑️ Clear Cache button to replay the pending state.
+// Clear cache button to replay the pending state.
 //
 // This lives in its own lazy child collection on purpose: it owns the slow
 // navigation example and keeps its route-specific DI checks local.
@@ -48,8 +49,9 @@ const { SlowReport } = craftService(
       params: () => true,
       loader: function* () {
         yield* craftSleep(1500);
+        const temporal = yield* CraftTemporalRuntime();
         return {
-          generatedAt: new Date().toLocaleTimeString(),
+          generatedAt: new Date(temporal.dateNow()).toLocaleTimeString(),
           totalUsers: 1234,
         };
       },

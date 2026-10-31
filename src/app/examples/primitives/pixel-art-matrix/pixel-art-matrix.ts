@@ -8,11 +8,16 @@ import {
   section,
   heading,
 } from '@craft-ts/component';
-import { craftService, state } from '@craft-ts/core';
-import { LONG_PRESS_DURATION_MS, longPress } from './long-press.directive';
+import {
+  craftService,
+  LONG_PRESS_DURATION_MS,
+  longPress,
+  state,
+} from '@craft-ts/core';
 import { assign } from '@craft-ts/style';
 import { example } from '../../shared/example.style';
 import { pixel, pixelColor, pixelVars } from '../pixel-art/pixel.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
 type Cell = {
   readonly id: number;
@@ -121,7 +126,7 @@ const PixelArtMatrix = craftComponent(
           heading({ class: example.title }, 'Pixel Art Workshop (Matrix)'),
           p(
             { class: example.text, 'data-exampleText': 'muted' },
-            '2D matrix: click paints, right-click paints a row, long-press paints a column.',
+            `Click a cell to paint it. Right-click it to copy its color across the row; press and hold for ${LONG_PRESS_DURATION_MS} ms to copy its color down the column.`,
           ),
         ]),
         div(
@@ -141,7 +146,7 @@ const PixelArtMatrix = craftComponent(
             }),
           ),
         ),
-        button('reset', { type: 'button', class: example.button, click: PixelArtMatrixView.grid.reset }, 'Reset'),
+        button('reset', { type: 'button', class: buttonUi.root, 'data-variant': 'secondary', click: PixelArtMatrixView.grid.reset }, 'Reset'),
         div(
           { class: pixel.matrix },
           forNode(PixelArtMatrixView.grid, { track: trackGridRow }, (row, rowIndex) =>
@@ -181,7 +186,7 @@ const PixelArtMatrix = craftComponent(
             ]),
           ),
         ),
-        button('addRow', { type: 'button', class: example.button, click: PixelArtMatrixView.grid.addRow }, 'Add row'),
+        button('addRow', { type: 'button', class: buttonUi.root, 'data-variant': 'secondary', click: PixelArtMatrixView.grid.addRow }, 'Add row'),
       ]),
 );
 

@@ -7,14 +7,10 @@ import {
   alignItems,
   bg,
   borderColor,
-  borderInlineStartColor,
-  borderInlineStartStyle,
-  borderInlineStartWidth,
   borderStyle,
   borderWidth,
   color,
   craftStyles,
-  definePalette,
   defineStateAxis,
   display,
   flex,
@@ -28,54 +24,62 @@ import {
   py,
   radii,
   radius,
+  shadow,
   space,
   textAlign,
   unit,
   when,
 } from '@craft-ts/style';
+import { theme } from '@craft-ts/ui/style';
 
-const editorUi = definePalette('stateEditor', {
+/** The Herbier theme, under the names this sheet uses. */
+const editorUi = {
   surface: {
-    step: { light: '#f8fafc', dark: '#f8fafc' },
-    stepActive: { light: '#eff6ff', dark: '#eff6ff' },
-    panel: { light: '#ffffff', dark: '#ffffff' },
-    hint: { light: '#f1f5f9', dark: '#f1f5f9' },
+    track: theme.navHover,
+    step: theme.clear,
+    stepActive: theme.raised,
+    panel: theme.surface,
+    hint: theme.navHover,
   },
   text: {
-    step: { light: '#64748b', dark: '#64748b' },
-    stepActive: { light: '#1d4ed8', dark: '#1d4ed8' },
-    label: { light: '#334155', dark: '#334155' },
-    hint: { light: '#475569', dark: '#475569' },
+    step: theme.inkMuted,
+    stepActive: theme.ink,
+    label: theme.ink,
+    hint: theme.inkMuted,
   },
   border: {
-    step: { light: '#cbd5e1', dark: '#cbd5e1' },
-    stepActive: { light: '#1d4ed8', dark: '#1d4ed8' },
-    panel: { light: '#e2e8f0', dark: '#e2e8f0' },
-    hint: { light: '#94a3b8', dark: '#94a3b8' },
+    panel: theme.line,
   },
-});
+};
 
 /** The step the machine is in. Drives `data-editorStep` on each step. */
 export const stepState = defineStateAxis('editorStep', ['active']);
 
 export const editor = craftStyles('stateEditor', {
-  steps: [display.flex, gap(space(2))],
+  /** The steps are a segmented control: a track, and the current step lifted out of it. */
+  steps: [
+    display.flex,
+    gap(space(1)),
+    p(space(1)),
+    radius(radii.xl),
+    bg(editorUi.surface.track),
+  ],
   step: [
     flex(num(1)),
     py(space(2)),
     px(space(3)),
-    borderWidth(lineWidth.hairline),
-    borderStyle.solid,
-    borderColor(editorUi.border.step),
     radius(radii.lg),
     textAlign.center,
     fontWeight(num(600)),
     color(editorUi.text.step),
     bg(editorUi.surface.step),
     when(stepState.active, [
-      borderColor(editorUi.border.stepActive),
       color(editorUi.text.stepActive),
       bg(editorUi.surface.stepActive),
+      shadow(
+        { y: unit.px(1), blur: unit.px(3), color: theme.shadow },
+        { y: unit.px(1), blur: unit.px(1), color: theme.shadow },
+      ),
     ]),
   ],
   panel: [
@@ -105,9 +109,7 @@ export const editor = craftStyles('stateEditor', {
   hint: [
     py(space(3)),
     px(space(4)),
-    borderInlineStartWidth(unit.px(3)),
-    borderInlineStartStyle.solid,
-    borderInlineStartColor(editorUi.border.hint),
+    radius(radii.xl),
     color(editorUi.text.hint),
     bg(editorUi.surface.hint),
   ],

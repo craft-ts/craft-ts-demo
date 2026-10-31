@@ -22,9 +22,9 @@ import {
   craftStyles,
   cssVars,
   defineStateAxis,
-  definePalette,
   display,
   font,
+  fontFamily,
   fontWeight,
   gap,
   kind,
@@ -39,28 +39,30 @@ import {
   text,
   unit,
   when,
+  whiteSpace,
 } from '@craft-ts/style';
+import { herbier, sansFont, theme } from '@craft-ts/ui/style';
 
 /**
- * Demo-local colours, declared as a palette rather than dropped inline: the
- * group name gives each token its role, and both modes travel together.
+ * The Herbier theme's tones, one per status colour: a neutral, and the
+ * danger, warning, tip and info pairs the design system already defines.
  */
-const badgePalette = definePalette({
+const badgePalette = {
   surface: {
-    gray: { light: '#e2e8f0', dark: '#2d3748' },
-    red: { light: '#fed7d7', dark: '#4a1d1d' },
-    orange: { light: '#feebc8', dark: '#4a3111' },
-    green: { light: '#c6f6d5', dark: '#14371f' },
-    blue: { light: '#bee3f8', dark: '#183a56' },
+    gray: theme.selected,
+    red: theme.dangerSurface,
+    orange: theme.warningSurface,
+    green: theme.tipSurface,
+    blue: theme.infoSurface,
   },
   text: {
-    gray: { light: '#4a5568', dark: '#cbd5e0' },
-    red: { light: '#c53030', dark: '#feb2b2' },
-    orange: { light: '#c05621', dark: '#fbd38d' },
-    green: { light: '#2f855a', dark: '#9ae6b4' },
-    blue: { light: '#2b6cb0', dark: '#90cdf4' },
+    gray: theme.ink,
+    red: theme.dangerInk,
+    orange: theme.warningInk,
+    green: theme.tipInk,
+    blue: theme.infoInk,
   },
-});
+};
 
 export const statusTone = defineStateAxis('status', [
   'gray',
@@ -71,8 +73,8 @@ export const statusTone = defineStateAxis('status', [
 ]);
 
 export const v = cssVars('status', {
-  bg: kind.color(badgePalette.surface.gray),
-  ink: kind.color(badgePalette.text.gray),
+  bg: kind.color(herbier.surface.selected),
+  ink: kind.color(herbier.text.body),
 });
 
 export const status = craftStyles('status', {
@@ -81,12 +83,14 @@ export const status = craftStyles('status', {
   emoji: [display.inlineBlock, font(text.sm), lineHeight(num(1))],
 
   badge: [
-    px(space(2)),
+    px(unit.rem(0.625)),
     py(space(1)),
-    radius(radii.md),
+    radius(radii.full),
+    fontFamily(sansFont),
     font(text.xs),
     lineHeight(num(1)),
     fontWeight(num(500)),
+    whiteSpace.nowrap,
     bg(v.bg),
     color(v.ink),
 

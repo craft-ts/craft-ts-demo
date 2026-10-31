@@ -30,6 +30,7 @@ import { StatusComponent } from '../../../ui/status.component';
 import { ApiService, type User } from './api.service';
 import { eventValue } from '../../../event-value';
 import { example } from '../../shared/example.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
 export const { ListWithPaginationView, provideListWithPaginationView } =
   craftService(
@@ -87,7 +88,8 @@ export const { ListWithPaginationView, provideListWithPaginationView } =
       yield* craftMethod(
         'updatePageSize',
         function* (event: Event) {
-          yield* pagination.updatePageSize(Number(eventValue(event)));
+          const value = eventValue(event);
+          yield* pagination.updatePageSize(Number(value));
         },
       );
     },
@@ -104,8 +106,8 @@ const ListWithPagination = craftComponent(
   // page change suspends the badge alone while the table keeps showing the
   // previous page's rows, which is the whole point of the placeholder
   // insertion. One boundary around both would hide them.
-  div([
-        heading([
+  div({ class: example.panel }, [
+        heading({ class: example.title }, [
           'User Management: ',
           span({}, [
             StatusComponent({
@@ -148,7 +150,7 @@ const ListWithPagination = craftComponent(
           select(
             'PageSize',
             {
-              class: example.select,
+              class: example.pageSize,
               'aria-label': 'Page size',
               value: function* () {
                 return String((yield* ListWithPaginationView.pagination()).pageSize);
@@ -169,7 +171,7 @@ const ListWithPagination = craftComponent(
           ),
           button(
             'PreviousPage',
-            { type: 'button', class: example.button, click: ListWithPaginationView.pagination.previousPage },
+            { type: 'button', class: buttonUi.root, 'data-variant': 'secondary', click: ListWithPaginationView.pagination.previousPage },
             'Previous',
           ),
           span(
@@ -181,7 +183,7 @@ const ListWithPagination = craftComponent(
           ),
           button(
             'NextPage',
-            { type: 'button', class: example.button, click: ListWithPaginationView.pagination.nextPage },
+            { type: 'button', class: buttonUi.root, 'data-variant': 'secondary', click: ListWithPaginationView.pagination.nextPage },
             'Next',
           ),
         ]),

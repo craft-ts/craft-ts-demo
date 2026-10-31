@@ -25,6 +25,7 @@ import {
   craftExpose,
 } from '@craft-ts/core';
 import { example } from '../shared/example.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
 // -- Types --
 
@@ -55,10 +56,10 @@ const TODOS: Todo[] = [
 
 // -- ApiService: global craftService with CRUD endpoints --
 
-const { ApiService } = craftService(
-  { name: 'ApiService', providedIn: 'global' },
+const { ApiServicePlaygroundPlayground: ApiService } = craftService(
+  { name: 'ApiServicePlaygroundPlayground', providedIn: 'global' },
   function* () {
-    const nextId = yield* craftPrivate(state('nextId', 4, ({ state, update }) => ({
+    const nextId = yield* craftPrivate(state('nextIdPlaygroundPlayground', 4, ({ state, update }) => ({
       take: function* () {
         const _state = yield* state();
         const id = _state;
@@ -201,7 +202,7 @@ const PlaygroundComponent = craftComponent(
   {
     providers: [providePlaygroundView()],
   },
-  () => div({ class: example.centered }, [
+  () => div({ class: example.card }, [
         heading({ class: example.title }, 'Playground'),
         p(
           { class: example.text, 'data-exampleText': 'muted' },
@@ -223,7 +224,7 @@ const PlaygroundComponent = craftComponent(
           button(
             'add',
             {
-              class: example.button,
+              class: buttonUi.root, 'data-variant': 'secondary',
               type: 'button',
               disabled: PlaygroundView.pg.addTodo.isLoading,
               click: PlaygroundView.add,
@@ -245,8 +246,8 @@ const PlaygroundComponent = craftComponent(
                 button(
                   'toggle',
                   {
-                    class: example.button,
-                    'data-exampleButton': 'ghost',
+                    class: buttonUi.root,
+                    'data-variant': 'link',
                     type: 'button',
                     *click() {
                       yield* PlaygroundView.pg.toggleTodo.mutate((yield* todo()).id);
@@ -270,8 +271,8 @@ const PlaygroundComponent = craftComponent(
                 button(
                   'delete',
                   {
-                    class: example.button,
-                    'data-exampleButton': 'ghost',
+                    class: buttonUi.root,
+                    'data-variant': 'link',
                     type: 'button',
                     'aria-label': function* () {
                       return `Delete ${(yield* todo()).title}`;

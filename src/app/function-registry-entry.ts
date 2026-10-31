@@ -11,6 +11,8 @@ import {
   CraftRouter,
   craftUse,
   executeGeneratorCompatibleFactory,
+  getCurrentStartCorrelationId,
+  ɵinjectCraftRandomRuntime,
   HOST_TAG_LIST,
   injectPrimitiveMethodRuntimeContext,
   provideFnWrapper,
@@ -38,6 +40,10 @@ import {
 import { toCraftGotoTarget } from './page-actor';
 
 type RegistryFactory = (...args: unknown[]) => unknown;
+const DOM_EVENT_NAMES =
+  'abort|blur|change|click|contextmenu|dblclick|error|focus|input|keydown|keypress|keyup|load|mousedown|mouseenter|mouseleave|mousemove|mouseout|mouseover|mouseup|paste|pointerdown|pointerenter|pointerleave|pointermove|pointerup|reset|scroll|submit|touchend|touchmove|touchstart';
+const DOM_EVENT_CORRELATION = new RegExp(`:(?:${DOM_EVENT_NAMES}):[^:]+$`);
+const overriddenInteractions = new Set<string>();
 
 export function ensureFunctionRegistryEntry(
   factory: RegistryFactory,
@@ -106,7 +112,7 @@ export const provideMcpExperimentation = () => [
       // eslint-disable-next-line craft-ts/prefer-browser-boundaries
       globalThis.sessionStorage,
       // eslint-disable-next-line craft-ts/prefer-browser-boundaries
-      () => globalThis.crypto.randomUUID(),
+      () => ɵinjectCraftRandomRuntime().uuid(),
     ),
   ),
   provideAppInitializer(() => {
@@ -169,12 +175,25 @@ export const provideMcpExperimentation = () => [
       }
       const runtimeContext = injectPrimitiveMethodRuntimeContext();
       const key = ensureFunctionRegistryEntry(factory, thisArg, runtimeContext);
-      const override = functionRegistry.executeOverride(
-        key,
-        args,
-        runtimeContext,
+      const correlationId = getCurrentStartCorrelationId();
+      const interactionKey =
+        correlationId && DOM_EVENT_CORRELATION.test(correlationId)
+          ? `${key}\u0000${correlationId}`
+          : undefined;
+      const isDomEventInvocation = args.some(
+        (arg) => typeof Event !== 'undefined' && arg instanceof Event,
       );
+      const shouldApplyOverride =
+        interactionKey === undefined ||
+        (isDomEventInvocation && !overriddenInteractions.has(interactionKey));
+      const override = shouldApplyOverride
+        ? functionRegistry.executeOverride(key, args, runtimeContext)
+        : { matched: false as const };
       if (override.matched) {
+        if (interactionKey !== undefined) {
+          overriddenInteractions.add(interactionKey);
+          queueMicrotask(() => overriddenInteractions.delete(interactionKey));
+        }
         return override.result;
       }
       return yield* factory.apply(thisArg, args);

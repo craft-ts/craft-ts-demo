@@ -27,13 +27,14 @@ import {
 } from '@craft-ts/core';
 import { StatusComponent } from '../../../ui/status.component';
 import { example } from '../../shared/example.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
 type Todo = { readonly id: number; readonly title: string };
 
 export const { FullDemoView, provideFullDemoView } = craftService(
   { name: 'fullDemoView', providedIn: 'toProvide' },
   function* () {
-    const nextId = yield* craftPrivate(state('nextId', 3, ({ state, update }) => ({
+    const nextId = yield* craftPrivate(state('nextIdFullDemoFullDemo2', 3, ({ state, update }) => ({
       take: function* () {
         const _state = yield* state();
         const id = _state;
@@ -42,7 +43,7 @@ export const { FullDemoView, provideFullDemoView } = craftService(
       },
     })));
     const records = yield* craftPrivate(state(
-      'records',
+      'recordsFullDemoFullDemo2',
       [
         { id: 1, title: 'Learn Craft primitives' },
         { id: 2, title: 'Build functional components' },
@@ -94,7 +95,7 @@ const FullDemo = craftComponent(
   {
     providers: [provideFullDemoView()],
   },
-  () => div({ class: example.page }, [
+  () => div({ class: example.card }, [
         heading({ class: example.title }, [
           'Full primitives demo ',
           StatusComponent({ status: FullDemoView.todos.status }),
@@ -121,8 +122,8 @@ const FullDemo = craftComponent(
             button(
               'AddTodoButton',
               {
-                class: example.button,
-                'data-exampleButton': 'primary',
+                class: buttonUi.root,
+                'data-variant': 'primary',
                 type: 'submit',
               disabled: FullDemoView.addTodo.isLoading,
               },
@@ -151,8 +152,8 @@ const FullDemo = craftComponent(
                 button(
                   'RemoveTodoButton',
                   {
-                    class: example.button,
-                    'data-exampleButton': 'danger',
+                    class: buttonUi.root,
+                    'data-variant': 'secondary',
                     type: 'button',
                   disabled: FullDemoView.removeTodo.isLoading,
                     *click() {

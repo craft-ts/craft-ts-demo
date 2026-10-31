@@ -25,7 +25,9 @@ type MutationTemplate = ComponentTemplateOf<typeof MutationDemoComponent>;
 
 type _UserQueryDependsOnApiService = Expect<
   Equal<
-    'ApiService' extends keyof ExtractDeps<MutationLogic['userQuery']>
+    'ApiServiceMutationApiService2' extends keyof ExtractDeps<
+      MutationLogic['userQuery']
+    >
       ? true
       : false,
     true
@@ -43,7 +45,9 @@ type _UserQueryDependsOnStoragePersister = Expect<
 
 type _UpdateMutationDependsOnApiService = Expect<
   Equal<
-    'ApiService' extends keyof ExtractDeps<MutationLogic['updateUserName']>
+    'ApiServiceMutationApiService2' extends keyof ExtractDeps<
+      MutationLogic['updateUserName']
+    >
       ? true
       : false,
     true
@@ -52,7 +56,9 @@ type _UpdateMutationDependsOnApiService = Expect<
 
 type _UpdateItemIsTracked = Expect<
   Equal<
-    ExtractDeps<MutationLogic['updateUserName']>['ApiService'] extends {
+    ExtractDeps<
+      MutationLogic['updateUserName']
+    >['ApiServiceMutationApiService2'] extends {
       derivedPropertiesUsed: infer Used extends object;
     }
       ? 'updateItem' extends keyof Used
@@ -67,7 +73,9 @@ type _ApiServiceDependencyMatches = Expect<
   Equal<
     ExtractDeps<
       MutationLogic['updateUserName']
-    >['ApiService'] extends GetServiceDependencies<typeof ApiService>
+    >['ApiServiceMutationApiService2'] extends GetServiceDependencies<
+      typeof ApiService
+    >
       ? true
       : false,
     true
@@ -232,9 +240,9 @@ describe('primitive mutation template', () => {
       {
         inputs: {},
         register: {
-          ApiService: 'notReached',
-          CraftRouter: 'notReached',
+          ApiServiceMutationApiService2: 'notReached',
           StoragePersister: 'notReached',
+          UserIdPathParams: 'notReached',
           mutationDemoView: result.context,
         },
       },
@@ -244,10 +252,9 @@ describe('primitive mutation template', () => {
       const input = template.nativeElement.querySelector<HTMLInputElement>(
         'input[placeholder="New name"]',
       );
-      const button =
-        template.nativeElement.querySelector<HTMLButtonElement>(
-          '[data-testid="update-user-name"]',
-        );
+      const button = template.nativeElement.querySelector<HTMLButtonElement>(
+        '[data-testid="update-user-name"]',
+      );
       input!.value = 'Alice';
       input!.dispatchEvent(new Event('input', { bubbles: true }));
       button!.click();
@@ -265,9 +272,9 @@ describe('primitive mutation template', () => {
       {
         inputs: {},
         register: {
-          ApiService: 'notReached',
-          CraftRouter: 'notReached',
+          ApiServiceMutationApiService2: 'notReached',
           StoragePersister: 'notReached',
+          UserIdPathParams: 'notReached',
           mutationDemoView: withUser.context,
         },
       },
@@ -286,9 +293,9 @@ describe('primitive mutation template', () => {
       await setupCraftComponentTemplateTest.byRegister(MutationDemoComponent, {
         inputs: {},
         register: {
-          ApiService: 'notReached',
-          CraftRouter: 'notReached',
+          ApiServiceMutationApiService2: 'notReached',
           StoragePersister: 'notReached',
+          UserIdPathParams: 'notReached',
           mutationDemoView: withoutUser.context,
         },
       });
@@ -307,9 +314,9 @@ describe('primitive mutation template', () => {
       {
         inputs: {},
         register: {
-          ApiService: 'notReached',
-          CraftRouter: 'notReached',
+          ApiServiceMutationApiService2: 'notReached',
           StoragePersister: 'notReached',
+          UserIdPathParams: 'notReached',
           mutationDemoView: result.context,
         },
       },
@@ -346,9 +353,23 @@ describe('primitive mutation logic', () => {
             return user.id;
           },
         }),
-        ApiService: { getItemById, updateItem },
+        ApiServiceMutationApiService2: { getItemById, updateItem },
         StoragePersister: storage,
         CraftRouter: { navigate },
+        UserIdPathParams: {
+          nextUser: vi.fn(function* () {
+            navigate({ to: 'mutation/:userId', params: { userId: '2' } });
+          }),
+          previousUser: vi.fn(function* () {
+            navigate({ to: 'mutation/:userId', params: { userId: '0' } });
+          }),
+          shiftUser: vi.fn(function* (offset: number) {
+            navigate({
+              to: 'mutation/:userId',
+              params: { userId: String(1 + offset) },
+            });
+          }),
+        },
       } as never,
       {
         bindings: {

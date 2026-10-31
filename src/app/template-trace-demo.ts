@@ -15,11 +15,9 @@ import {
   provideCraftHttpTrace,
   provideCraftRouterTrace,
   provideCraftDomEventHook,
-  provideFnWrapper,
   provideTemplateTrace,
   type CraftHttpTraceWrapper,
   type CraftRouterTraceWrapper,
-  type FnWrapper,
   type TemplateTraceContext,
 } from '@craft-ts/core';
 
@@ -66,7 +64,7 @@ function logTrace(label: string, value: unknown, injector?: Injector): void {
       }),
     );
   } catch {
-    // Tracing must never throw into the app (NG0205 after destroy, NG0203, …).
+    // Tracing must never leak teardown or injection-context failures into the app.
   } finally {
     logging = false;
   }
@@ -89,27 +87,6 @@ function isCraftControlFlow(error: unknown): boolean {
     isCraftNotSettled(error)
   );
 }
-
-const demoFnTrace: FnWrapper = function* (factory, thisArg, args) {
-  const name = factory.name || '<anonymous>';
-  const injector = optionalAngularInjector();
-  if (logging) {
-    return yield* factory.apply(thisArg, args);
-  }
-
-  try {
-    logTrace('[trace:function:start]', { name, args }, injector);
-    const result = yield* factory.apply(thisArg, args);
-    logTrace('[trace:function:end]', { name, result }, injector);
-    return result;
-  } catch (error) {
-    if (isCraftControlFlow(error)) {
-      throw error;
-    }
-    logTrace('[trace:function:error]', { name, error }, injector);
-    return craftException({ _tag: 'UNEXPECTED_ERROR' }, { error });
-  }
-};
 
 function traceAsync<T>(label: string, context: unknown, next: () => T): T {
   // Promise callbacks run after Angular's synchronous injection context has
@@ -171,10 +148,6 @@ export function provideDemoTracing(): (Provider | EnvironmentProviders)[] {
     provideCraftHttpTrace(demoHttpTrace),
     provideCraftDomEventHook((interaction, next) =>
       traceAsync('[trace:dom]', interaction, next),
-    ),
-    provideFnWrapper(
-      'Warning: the demo tracing wrapper logs every wrapped Craft factory',
-      demoFnTrace,
     ),
   ];
 }

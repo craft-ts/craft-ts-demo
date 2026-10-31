@@ -17,9 +17,13 @@ import {
   craftExpose,
 } from '@craft-ts/core';
 import { example } from '../shared/example.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
-const { Counter, provideCounter } = craftService(
-  { name: 'Counter', providedIn: 'toProvide' },
+const {
+  CounterCraftServiceRegisterFor: Counter,
+  provideCounterCraftServiceRegisterFor: provideCounter,
+} = craftService(
+  { name: 'CounterCraftServiceRegisterFor', providedIn: 'toProvide' },
   function* () {
     yield* state('counter', 0, ({ update }) => ({
       increment: () => update((v) => v + 1),
@@ -43,8 +47,8 @@ const CounterChild = craftComponent(
   () => div({ class: example.box }, [
       span({ class: example.subtitle }, CounterChildView.counter),
       div({ class: example.row }, [
-        button('decrement', { class: example.button, type: 'button', 'aria-label': 'Decrement', click: CounterChildView.counter.decrement }, '-'),
-        button('increment', { class: example.button, type: 'button', 'aria-label': 'Increment', click: CounterChildView.counter.increment }, '+'),
+        button('decrement', { class: buttonUi.root, 'data-variant': 'secondary', type: 'button', 'aria-label': 'Decrement', click: CounterChildView.counter.decrement }, '-'),
+        button('increment', { class: buttonUi.root, 'data-variant': 'secondary', type: 'button', 'aria-label': 'Increment', click: CounterChildView.counter.increment }, '+'),
       ]),
     ]),
 );
@@ -57,10 +61,13 @@ const { RegisterForCounterChild, provideRegisterForCounterChild } =
     total: craftUse(craftComputed('total', () => CounterChild()?.length ?? 0)),
   }));
 
-const { RegisterForCounter, provideRegisterForCounter } = craftRegisterFor(
-  'Counter',
+const {
+  RegisterForCounterCraftServiceRegisterFor: RegisterForCounter,
+  provideRegisterForCounterCraftServiceRegisterFor: provideRegisterForCounter,
+} = craftRegisterFor(
+  'CounterCraftServiceRegisterFor',
   Counter,
-  ({ Counter }) => ({
+  ({ CounterCraftServiceRegisterFor: Counter }) => ({
     total: craftUse(craftComputed('total', () => Counter()?.length ?? 0)),
     incrementAllChildCounter: () =>
       Counter()?.forEach(({ ref }) => ref.counter.increment()),
@@ -118,15 +125,15 @@ const RegisterForDemo = craftComponent(
         ),
         div({ class: example.row }, [
           button('incrementAll',
-            { class: example.button, type: 'button', click: RegisterForDemoView.counters.incrementAllChildCounter },
+            { class: buttonUi.root, 'data-variant': 'secondary', type: 'button', click: RegisterForDemoView.counters.incrementAllChildCounter },
             'Increment all',
           ),
           button('decrementAll',
-            { class: example.button, type: 'button', click: RegisterForDemoView.counters.decrementAllChildCounter },
+            { class: buttonUi.root, 'data-variant': 'secondary', type: 'button', click: RegisterForDemoView.counters.decrementAllChildCounter },
             'Decrement all',
           ),
-          button('addChild', { class: example.button, type: 'button', click: RegisterForDemoView.counterChildIds.addChild }, 'Add a child'),
-          button('removeChild', { class: example.button, type: 'button', click: RegisterForDemoView.counterChildIds.removeChild }, 'Remove a child'),
+          button('addChild', { class: buttonUi.root, 'data-variant': 'secondary', type: 'button', click: RegisterForDemoView.counterChildIds.addChild }, 'Add a child'),
+          button('removeChild', { class: buttonUi.root, 'data-variant': 'secondary', type: 'button', click: RegisterForDemoView.counterChildIds.removeChild }, 'Remove a child'),
           span(
             { class: example.hint },
             function* () {

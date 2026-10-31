@@ -20,13 +20,23 @@ import {
   craftComputed,
   craftMethod,
   CraftRouterLink,
+  CraftTemporalRuntime,
   GlobalPersisterHandlerService,
+  fromEventToSource$,
   type CraftRouterLinkInput,
   state,
   craftService,
 } from '@craft-ts/core';
 import { demoEnabledRoutePaths } from './app.routes';
 import { demoShell } from './demo-shell.style';
+import {
+  DocModeToggle,
+  provideDocModeView,
+  DocSeasonPicker,
+  provideDocSeasonView,
+  defaultSeasonNames,
+} from '@craft-ts/ui';
+import { badgeUi, buttonUi } from '@craft-ts/ui/style';
 
 const DOCS_URL = 'https://craft-ts.github.io/craft/';
 const FEEDBACK_URL = 'https://github.com/craft-ts/craft-ts/issues';
@@ -46,6 +56,7 @@ const NAV_GROUPS = [
       ['CSS Variables — Inheritance', { to: 'css-vars/inheritance' }],
       ['CSS Variables — Forwarding', { to: 'css-vars/forwarding' }],
       ['CSS Variables — @property', { to: 'css-vars/property' }],
+      ['Interaction State Replay', { to: 'interaction-replay' }],
     ],
   },
   {
@@ -53,6 +64,7 @@ const NAV_GROUPS = [
     links: [
       ['Mini design system', { to: 'design-system' }],
       ['Context obligations', { to: 'design-system/scroll' }],
+      ['Herbier components', { to: 'herbier' }],
     ],
   },
   {
@@ -74,20 +86,14 @@ const NAV_GROUPS = [
       ['State Machine', { to: 'state-machine' }],
       ['State Machine — text editor', { to: 'state-machine-text' }],
       ['State Machine — list', { to: 'state-machine-list' }],
+      ['Replay method coverage', { to: 'replay-methods' }],
+      ['Temporal stream replay', { to: 'temporal-stream-replay' }],
       ['Exception QueryParams', { to: 'exception-query-params' }],
     ],
   },
   {
     label: 'Craft',
     links: [
-      ['Craft Query', { to: 'craft/query/:userId', params: { userId: '1' } }],
-      [
-        'Craft Mutation',
-        { to: 'craft/mutation/:userId', params: { userId: '1' } },
-      ],
-      ['Craft List Pagination', { to: 'craft/list-with-pagination' }],
-      ['Craft Granular Mutation', { to: 'craft/granular-mutation' }],
-      ['Craft Full Demo', { to: 'craft/full-demo' }],
       [
         'Craft Lazy Layout',
         {
@@ -116,6 +122,75 @@ const VISIBLE_NAV_GROUPS = NAV_GROUPS.map((group) => ({
   ...group,
   links: group.links.filter(([, link]) => isEnabledDemoRoute(link.to)),
 })).filter((group) => group.links.length > 0);
+
+function focusExampleLink(
+  event: KeyboardEvent,
+  direction: 'first' | 'last' | 'next' | 'previous',
+) {
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLAnchorElement)) return;
+  const panel = target.closest('[data-testid="nav-panel"]');
+  const links = panel?.querySelectorAll<HTMLAnchorElement>(
+    '[data-testid="nav-link"]',
+  );
+  if (!links?.length) return;
+
+  event.preventDefault();
+  const currentIndex = [...links].indexOf(target);
+  const nextIndex =
+    direction === 'first'
+      ? 0
+      : direction === 'last'
+        ? links.length - 1
+        : (currentIndex + (direction === 'next' ? 1 : -1) + links.length) %
+          links.length;
+  links[nextIndex]?.focus();
+}
+
+function* handleNavLinkKeydown(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown') focusExampleLink(event, 'next');
+  if (event.key === 'ArrowUp') focusExampleLink(event, 'previous');
+  if (event.key === 'Home') focusExampleLink(event, 'first');
+  if (event.key === 'End') focusExampleLink(event, 'last');
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    yield* AppView.navOpen.close();
+    document
+      .querySelector<HTMLButtonElement>('[data-testid="nav-toggle"]')
+      ?.focus();
+  }
+}
+
+function* handleNavToggleKeydown(event: KeyboardEvent) {
+  const temporal = yield* CraftTemporalRuntime();
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    const panel = document.querySelector<HTMLElement>(
+      '[data-testid="nav-panel"]',
+    );
+    if (panel) {
+      const links = panel.querySelectorAll<HTMLAnchorElement>(
+        '[data-testid="nav-link"]',
+      );
+      links[event.key === 'ArrowDown' ? 0 : links.length - 1]?.focus();
+    } else {
+      event.preventDefault();
+      yield* AppView.navOpen.toggle();
+      // The panel renders once the toggle has settled: focus it on the next task.
+      temporal.schedule(() => {
+        const links = document.querySelectorAll<HTMLAnchorElement>(
+          '[data-testid="nav-panel"] [data-testid="nav-link"]',
+        );
+        links[event.key === 'ArrowDown' ? 0 : links.length - 1]?.focus();
+      }, 0);
+    }
+  } else if (
+    event.key === 'Escape' &&
+    document.querySelector('[data-testid="nav-panel"]')
+  ) {
+    event.preventDefault();
+    yield* AppView.navOpen.close();
+  }
+}
 
 /**
  * Runtime `META_PATHS` lists each `craftRoutes` entry, not the flattened
@@ -146,15 +221,29 @@ export const { AppView, provideAppView } = craftService(
         close: () => set(false),
       }),
     );
+    if (typeof document !== 'undefined') {
+      fromEventToSource$<PointerEvent>(document, 'pointerdown').subscribe(
+        (event) => {
+          const target = event.target;
+          if (!(target instanceof Node)) return;
+
+          const panel = document.querySelector('[data-testid="nav-panel"]');
+          const toggle = document.querySelector('[data-testid="nav-toggle"]');
+          if (!panel?.contains(target) && !toggle?.contains(target)) {
+            navOpen.close();
+          }
+        },
+      );
+    }
     yield* craftComputed('navToggleLabel', function* () {
       return (yield* navOpen()) ? 'Close examples' : 'Browse examples';
     });
     yield* craftMethod('clearCache', function* () {
       yield* GlobalPersisterHandlerService.clearAllCache();
+      // This button is an explicit development reset action; reload so every
+      // demo resource starts from the cleared cache. The session recorder
+      // captures this intentional alert and the replay bridge simulates it.
       yield* BrowserWindow.alert('Cache cleared! The page will reload.');
-      // This button is an explicit development reset action; reload after the
-      // confirmation so every demo resource starts from the cleared cache.
-       
       yield* BrowserLocation.reload();
     });
   },
@@ -163,7 +252,7 @@ export const { AppView, provideAppView } = craftService(
 export const App = craftComponent(
   'App',
   {
-    providers: [provideAppView()],
+    providers: [provideAppView(), provideDocModeView(), provideDocSeasonView()],
   },
   () =>
     div({ class: demoShell.root }, [
@@ -173,7 +262,8 @@ export const App = craftComponent(
         { class: demoShell.banner, 'data-testid': 'demo-banner' },
         [
           div({ class: demoShell.bannerMain }, [
-            strong({ class: demoShell.bannerStrong }, 'Beta demo'),
+            span({ class: badgeUi.root, 'data-tone': 'important' }, 'Beta'),
+            strong({ class: demoShell.bannerStrong }, 'Demo'),
             span(' — the API and documentation may still evolve.'),
             a(
               'docs',
@@ -208,10 +298,12 @@ export const App = craftComponent(
         button(
           'navToggle',
           {
-            class: demoShell.navToggle,
+            class: buttonUi.root,
+            'data-variant': 'secondary',
             'data-testid': 'nav-toggle',
             type: 'button',
             'aria-expanded': AppView.navOpen,
+            keydown: handleNavToggleKeydown,
           },
           AppView.navToggleLabel,
         ).pipe(
@@ -248,7 +340,9 @@ export const App = craftComponent(
                         'navLink',
                         {
                           class: demoShell.navLink,
+                          'data-testid': 'nav-link',
                           click: AppView.navOpen.close,
+                          keydown: handleNavLinkKeydown,
                         },
                         function* () {
                           return (yield* entry())[0];
@@ -264,19 +358,40 @@ export const App = craftComponent(
           ),
           ),
         ),
+        div({ class: demoShell.navTools }, [
+          DocSeasonPicker({
+            label: function* () {
+              return 'Season';
+            },
+            menuId: function* () {
+              return 'season-menu';
+            },
+            names: function* () {
+              return defaultSeasonNames;
+            },
+          }),
+          DocModeToggle({
+            label: function* () {
+              return 'Toggle light and dark';
+            },
+          }),
+        ]),
       ]),
       main(
         { id: 'main', class: demoShell.content, tabIndex: -1 },
         CraftRouterOutlet(),
       ),
-      button(
-        'clearCache',
-        {
-          class: demoShell.clearCache,
-          type: 'button',
-          click: AppView.clearCache,
-        },
-        '🗑️ Clear Cache',
-      ),
+      div({ class: demoShell.clearCache }, [
+        button(
+          'clearCache',
+          {
+            class: buttonUi.root,
+            'data-variant': 'danger',
+            type: 'button',
+            click: AppView.clearCache,
+          },
+          'Clear cache',
+        ),
+      ]),
     ]),
 );

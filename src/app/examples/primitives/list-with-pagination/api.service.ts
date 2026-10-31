@@ -13,11 +13,11 @@ export type User = {
   name: string;
 };
 
-export const { ApiService } = craftService(
-  { name: 'ApiService', providedIn: 'global' },
+export const { ApiServiceListWithPaginationApiService2: ApiService } = craftService(
+  { name: 'ApiServiceListWithPaginationApiService2', providedIn: 'global' },
   function* () {
     const dataList = yield* craftPrivate(state(
-      'dataList',
+      'dataListListWithPaginationApiService2',
       [
         { id: '1', name: 'Romain' },
         { id: '2', name: 'Geffrault' },
@@ -53,7 +53,7 @@ export const { ApiService } = craftService(
       }),
     ));
 
-    const updateError = yield* state('updateError', false);
+    const updateError = yield* state('updateErrorListWithPaginationApiService2', false);
 
     yield* craftExpose('getDataList', craftGen(function* (data: {
       page: number;

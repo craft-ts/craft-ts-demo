@@ -21,6 +21,7 @@ import { card } from './content-projection-card';
 import { toolbarAction, userBadge } from './content-projection-actions';
 import { dialog, toolbar } from './content-projection-overlays';
 import { componentUi, projectionDemo } from './component-demos.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
 interface DemoUser {
   readonly id: number;
@@ -46,17 +47,17 @@ export const { ContentProjectionDemoView, provideContentProjectionDemoView } =
   craftService(
     { name: 'contentProjectionDemoView', providedIn: 'toProvide' },
     function* () {
-      const showToolbar = yield* state('showToolbar', true, ({ update }) => ({
+      yield* state('showToolbar', true, ({ update }) => ({
         toggle: () => update((visible) => !visible),
       }));
       const confirmed$ = yield* source$<void>('confirmed$');
-      const dialogOpen = yield* state('dialogOpen', false, ({ set }) => ({
+      yield* state('dialogOpen', false, ({ set }) => ({
         open: () => set(true),
         closeFromToolbar: () => set(false),
         confirmed$,
         closeOnConfirmation: on$(confirmed$, () => set(false)),
       }));
-      const lastActionLabel = yield* state(
+      yield* state(
         'lastActionLabel',
         'No action triggered yet.',
         ({ set }) => ({
@@ -75,9 +76,6 @@ export const { ContentProjectionDemoView, provideContentProjectionDemoView } =
       ] satisfies readonly DemoUser[];
 
       yield* craftExpose('users', users);
-      yield* craftExpose('lastActionText', lastActionLabel);
-      yield* craftExpose('toolbarVisible', showToolbar);
-      yield* craftExpose('dialogVisible', dialogOpen);
     },
   );
 
@@ -130,26 +128,26 @@ export const contentProjectionDemo = craftComponent(
             ),
             p(
               { class: projectionDemo.status },
-              ContentProjectionDemoView.lastActionText,
+              ContentProjectionDemoView.lastActionLabel,
             ),
             button(
               'ContentProjectionDemoView.showToolbar.toggle',
               {
-                class: componentUi.button,
-                'data-componentButton': 'primary',
+                class: buttonUi.root,
+                'data-variant': 'primary',
                 type: 'button',
                 click: ContentProjectionDemoView.showToolbar.toggle,
               },
               ifNode(
                 'toolbarVisible',
-                ContentProjectionDemoView.toolbarVisible,
+                ContentProjectionDemoView.showToolbar,
                 () => 'Hide the toolbar',
                 () => 'Show the toolbar',
               ),
             ),
             ifNode(
               'toolbarVisible',
-              ContentProjectionDemoView.toolbarVisible,
+              ContentProjectionDemoView.showToolbar,
               () =>
                 toolbar({
                   actions: [
@@ -176,8 +174,8 @@ export const contentProjectionDemo = craftComponent(
             button(
               'ContentProjectionDemoView.dialogOpen.open',
               {
-                class: componentUi.button,
-                'data-componentButton': 'primary',
+                class: buttonUi.root,
+                'data-variant': 'primary',
                 type: 'button',
                 click: ContentProjectionDemoView.dialogOpen.open,
               },
@@ -187,7 +185,7 @@ export const contentProjectionDemo = craftComponent(
         ),
         ifNode(
           'dialogVisible',
-          ContentProjectionDemoView.dialogVisible,
+          ContentProjectionDemoView.dialogOpen,
           () =>
             dialog({
               body: content(() =>

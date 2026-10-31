@@ -23,6 +23,7 @@ import {
 import { assign } from '@craft-ts/style';
 import { example } from '../../shared/example.style';
 import { pixel, pixelColor, pixelVars } from './pixel.style';
+import { buttonUi } from '@craft-ts/ui/style';
 
 const DEFAULT_GRID_SIZE = 16;
 const EMPTY_COLOR = '#f8fafc';
@@ -134,7 +135,10 @@ const PixelArt = craftComponent(
     section({ class: example.card }, [
       header({ class: example.stack }, [
         heading({ class: example.title }, 'Pixel Art Workshop'),
-        p({ class: example.text, 'data-exampleText': 'muted' }, `${CELL_COUNT} cells with simple state and per-cell insertions.`),
+        p(
+          { class: example.text, 'data-exampleText': 'muted' },
+          `Click to paint one of ${CELL_COUNT} cells. This example focuses on per-cell state and insertions.`,
+        ),
       ]),
       div(
         { class: pixel.palette },
@@ -158,7 +162,7 @@ const PixelArt = craftComponent(
         'clear',
         {
           type: 'button',
-          class: example.button,
+          class: buttonUi.root, 'data-variant': 'secondary',
           click: PixelArtView.cells.clearAll,
         },
         'Clear',

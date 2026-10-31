@@ -2,6 +2,9 @@ import {
   provideCraftGlobalErrorComponent,
   provideCraftRootComponent,
   provideCraftRouteLoadErrorComponent,
+  provideCraftDebugSessionCapture,
+  provideCraftDebugReplayBridge,
+  provideCraftLoopGuard,
   provideSendContextToAi,
 } from '@craft-ts/component';
 import {
@@ -36,30 +39,60 @@ import {
   craftRouteTarget,
 } from '@craft-ts/core';
 import { App } from './app';
-import { demoRoutes } from './app.routes.runtime';
+import { demoRoutes } from './app.routes';
 import { provideMcpExperimentation } from './function-registry-entry';
 // Log forwarding imports disabled for the target demo.
 import { MyGlobalErrorScreen } from './my-global-error-screen';
 import { MyRouteLoadErrorScreen } from './my-route-load-error-screen';
 import { AppStartLog } from './run-on-app-start/run-on-app-start';
-import { provideDemoTracing } from './template-trace-demo';
+
+const localLogServerUrl =
+  import.meta.env['VITE_CRAFT_LOG_SERVER_URL'] ?? 'http://127.0.0.1:4319';
+const localReplayDashboardOrigin =
+  import.meta.env['VITE_CRAFT_REPLAY_DASHBOARD_ORIGIN'] ??
+  'http://localhost:4210';
+const localSessionCaptureEnabled = isLoopbackUrl(localLogServerUrl);
 
 const developmentProviders = import.meta.env.DEV
   ? [
       // The log server, tracing, snapshots and MCP bridge are deliberately
       // absent from the production graph.
       // Disabled in the target demo: do not send logs to the local log server.
-      // provideLogServerUrl(() => 'http://127.0.0.1:4319/logs'),
+      // provideLogServerUrl(() => `${localLogServerUrl}/logs`),
       // Disabled in the target demo: do not send logs to the local log server.
       // provideLogForwarding(),
-      provideDemoTracing(),
+      // provideDemoTracing(), // Used to track everything
       // eslint-disable-next-line craft-ts/prefer-browser-boundaries
       provideTakeAppSnapshot((data) => console.warn('App snapshot:', data)),
       provideSendContextEventEnricher((event) => ({
         ...event,
         application: 'demo',
       })),
-      provideSendContextToAi({ recording: true }),
+      provideCraftDebugSessionCapture({
+        webSocketUrl: `${localLogServerUrl.replace(/^http/, 'ws')}/sessions/ws`,
+        captureInputValues: localSessionCaptureEnabled,
+        captureSensitiveInputValues: localSessionCaptureEnabled,
+        captureBrowserStorage: localSessionCaptureEnabled,
+        captureReplayArguments: localSessionCaptureEnabled,
+      }),
+      provideCraftDebugReplayBridge({
+        parentOrigins: [
+          localReplayDashboardOrigin,
+          localReplayDashboardOrigin.replace('localhost', '127.0.0.1'),
+        ],
+      }),
+      provideCraftLoopGuard({
+        tripBreaker: true,
+        // This route deliberately renders 13 independent counter services;
+        // keep the leak guard's default threshold meaningful everywhere else.
+        exempt: {
+          'state:counter in component:App / component:CraftRouterOutlet / service:craftRouterOutletState / route:demo-send-context / component:DemoSendContextComponent / component:SendContextCounterComponent / service:sendContextCounterView':
+            {
+              leakedInstances: 20,
+            },
+        },
+      }),
+      provideSendContextToAi({ recording: false, capture: false }),
       provideMcpExperimentation(),
     ]
   : [];
@@ -130,6 +163,17 @@ export const appConfig = craftAppConfig({
     provideCorrelationIdTracking(),
   ],
 });
+
+function isLoopbackUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.replace(/^\[|\]$/g, '');
+    return (
+      hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+    );
+  } catch {
+    return false;
+  }
+}
 
 export type AppProvidedNames = AppProvidedServiceNamesOf<typeof appConfig>;
 export type AppProvidedValues = AppProvidedDependencyValuesOf<typeof appConfig>;

@@ -23,7 +23,9 @@ describe('Query template', () => {
 
   type _UserQueryDependsOnApiService = Expect<
     Equal<
-      'ApiService' extends keyof ExtractDeps<QueryLogic['userQuery']>
+      'ApiServiceQueryApiService2' extends keyof ExtractDeps<
+        QueryLogic['userQuery']
+      >
         ? true
         : false,
       true
@@ -43,7 +45,9 @@ describe('Query template', () => {
     Equal<
       ExtractDeps<
         QueryLogic['userQuery']
-      >['ApiService'] extends GetServiceDependencies<typeof ApiService>
+      >['ApiServiceQueryApiService2'] extends GetServiceDependencies<
+        typeof ApiService
+      >
         ? true
         : false,
       true
@@ -52,7 +56,9 @@ describe('Query template', () => {
 
   type _ApiServiceGetItemByIdIsTracked = Expect<
     Equal<
-      ExtractDeps<QueryLogic['userQuery']>['ApiService'] extends {
+      ExtractDeps<
+        QueryLogic['userQuery']
+      >['ApiServiceQueryApiService2'] extends {
         derivedPropertiesUsed: infer Used extends object;
       }
         ? 'getItemById' extends keyof Used
@@ -124,7 +130,11 @@ describe('Query template', () => {
 });
 
 describe('Query logic', () => {
-  async function setup(currentUserId = '3') {
+  async function setup(currentUserId = '3', replay = false) {
+    const originalUrl = window.location.href;
+    if (replay) {
+      window.history.replaceState(null, '', '/?craft-debug-replay=1');
+    }
     const getItemById = vi.fn(function* (userId: string) {
       return { id: userId, name: `User ${userId}` };
     });
@@ -153,8 +163,16 @@ describe('Query logic', () => {
             return currentUserId;
           },
         }),
-        ApiService: { getItemById },
+        ApiServiceQueryApiService2: { getItemById },
         CraftRouter: { navigate },
+        UserIdPathParams: {
+          nextUser: vi.fn(function* () {
+            navigate({ to: 'query/:userId', params: { userId: '4' } });
+          }),
+          previousUser: vi.fn(function* () {
+            navigate({ to: 'query/:userId', params: { userId: '2' } });
+          }),
+        },
         StoragePersister: storage,
       } as never,
       {
@@ -165,6 +183,7 @@ describe('Query logic', () => {
         },
       },
     );
+    if (replay) window.history.replaceState(null, '', originalUrl);
 
     await vi.waitFor(() =>
       expect(getItemById).toHaveBeenCalledWith(currentUserId),
@@ -214,6 +233,17 @@ describe('Query logic', () => {
           key: 'user-query',
         }),
       );
+    } finally {
+      injector.destroy();
+    }
+  });
+
+  it('does not restore cached query values during a debug replay launch', async () => {
+    const { storage, injector } = await setup('6', true);
+
+    try {
+      expect(storage.addQueryToPersist).not.toHaveBeenCalled();
+      expect(storage.addQueryByIdToPersist).not.toHaveBeenCalled();
     } finally {
       injector.destroy();
     }

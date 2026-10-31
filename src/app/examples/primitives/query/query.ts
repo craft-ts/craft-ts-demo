@@ -8,11 +8,11 @@ import {
   pre,
   withComponentProviders,
   type Input,
+  isCraftDebugReplayLaunch,
 } from '@craft-ts/component';
 import {
   craftService,
   craftMethod,
-  CraftRouter,
   insertStoragePersister,
   craftUnique,
   query,
@@ -22,6 +22,8 @@ import {
 import { StatusComponent } from '../../../ui/status.component';
 import { ApiService } from './api.service';
 import { example } from '../../shared/example.style';
+import { buttonUi } from '@craft-ts/ui/style';
+import { UserIdPathParams } from '../../shared/user-id-path-params';
 
 export const { GlobalQueryView, provideGlobalQueryView } = craftService(
   { name: 'globalQueryView', providedIn: 'toProvide' },
@@ -44,30 +46,19 @@ export const { GlobalQueryView, provideGlobalQueryView } = craftService(
           storeName: 'demo-app',
           key: 'user-query',
         }),
+        { enabled: !isCraftDebugReplayLaunch() },
       ),
     );
     yield* craftComputed('hasUser', () => userQuery.hasValue());
     yield* craftComputed('userValueJson', function* () {
       return JSON.stringify(yield* userQuery.value(), null, 2);
     });
-    const router = yield* CraftRouter(undefined, ({ navigate }) => ({
-      navigate,
-    }));
+    const userIdPathParams = yield* UserIdPathParams();
     yield* craftMethod('navigateNext', function* () {
-      const currentUserId = yield* userId();
-      const targetUserId = String(Number(currentUserId ?? '0') + 1);
-      void router.navigate({
-        to: 'query/:userId',
-        params: { userId: targetUserId },
-      });
+      return yield* userIdPathParams.nextUser();
     });
     yield* craftMethod('navigatePrevious', function* () {
-      const currentUserId = yield* userId();
-      const targetUserId = String(Number(currentUserId ?? '0') - 1);
-      void router.navigate({
-        to: 'query/:userId',
-        params: { userId: targetUserId },
-      });
+      return yield* userIdPathParams.previousUser();
     });
   },
 );
@@ -107,7 +98,7 @@ const GlobalQuery = craftComponent(
         button(
           'GoToPreviousUser',
           {
-            class: example.button,
+            class: buttonUi.root, 'data-variant': 'secondary',
             type: 'button',
             click: function* () {
               (yield* GlobalQueryView()).navigatePrevious();
@@ -118,8 +109,8 @@ const GlobalQuery = craftComponent(
         button(
           'GoToNextUser',
           {
-            class: example.button,
-            'data-exampleButton': 'primary',
+            class: buttonUi.root,
+            'data-variant': 'primary',
             type: 'button',
             click: function* () {
               (yield* GlobalQueryView()).navigateNext();

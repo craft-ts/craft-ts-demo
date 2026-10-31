@@ -14,9 +14,19 @@ import {
 import {
   craftService,
   craftComputed,
+  isGenerator,
   state,
 } from '@craft-ts/core';
 import { componentUi } from './component-demos.style';
+import { buttonUi } from '@craft-ts/ui/style';
+
+function* emitRemove(
+  handler: (user: DemoUser) => unknown,
+  user: DemoUser,
+) {
+  const result = handler(user);
+  if (isGenerator(result)) yield* result;
+}
 
 interface DemoUser {
   readonly id: number;
@@ -45,9 +55,9 @@ const userCard = craftComponent(
           'removeUser',
           {
             type: 'button',
-            class: componentUi.button,
+            class: buttonUi.root, 'data-variant': 'secondary',
             *click() {
-              inputs.onRemove(yield* inputs.user());
+              yield* emitRemove(inputs.onRemove, yield* inputs.user());
             },
             'aria-label': function* () {
               return `Remove ${(yield* inputs.user()).name}`;
@@ -99,8 +109,8 @@ export const componentDemo = craftComponent(
         'addUser',
         {
           type: 'button',
-          class: componentUi.button,
-          'data-componentButton': 'primary',
+          class: buttonUi.root,
+          'data-variant': 'primary',
           click: ComponentDemoView.users.addUser,
           'data-testid': 'add-user',
         },
@@ -133,8 +143,8 @@ export const componentDemo = craftComponent(
               'loadDeferred',
               {
                 type: 'button',
-                class: componentUi.button,
-                'data-componentButton': 'primary',
+                class: buttonUi.root,
+                'data-variant': 'primary',
                 'data-testid': 'load-deferred',
               },
               'Load the deferred component',
